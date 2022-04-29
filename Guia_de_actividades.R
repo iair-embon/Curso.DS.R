@@ -41,5 +41,13 @@ dbinom(5,n,prob = p_r_dado_y[1]) + dbinom(5,n,prob = p_r_dado_y[2])
 ## ej 6 
 library(janitor)
 
-p_x_removidos <- dbinom(df$x,n,prob = p_r_dado_y[1]) + 
+df$p_x_removidos <- dbinom(df$x,n,prob = p_r_dado_y[1]) + 
   dbinom(df$x,n,prob = p_r_dado_y[2])
+
+barplot(df$p_x_removidos, names.arg = df$x, main = "Probabilidad de X=x dado Y")
+
+## ej 7
+library(dplyr)
+library(data.table)
+
+DT <- data.table(x=x, y, p_x_removidos)
