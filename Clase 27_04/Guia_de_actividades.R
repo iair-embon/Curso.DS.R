@@ -124,3 +124,64 @@ rowSums(tab4)
 #############
 
 ## ej 13
+
+regla5 <- function(x){
+  v <- ifelse(x >= 5,1,0)
+  return(v)
+  }
+
+y_predicted <- regla5(datos$removidos)
+
+error <- ifelse(y_predicted == datos$especie,0,1)
+
+r <- sum(error)/nrow(datos) 
+
+## ej 14
+rechazadorpar <- function(x){
+  v <- ifelse((x %% 2) == 0,1,0)
+  return(v)
+}
+
+y_predicted <- rechazadorpar(datos$removidos)
+
+error <- ifelse(y_predicted == datos$especie,0,1)
+
+r <- sum(error)/nrow(datos) 
+
+## ej 15
+
+# Se prefiere la funcion regla5, porque tiene un error inmensamente menor a
+# rechazadorpar
+
+## ej 16
+
+reglacorte <- function(x,t){
+  
+  v <- c()
+  
+  for (i in 1:length(t)) {
+    y_predicted <- ifelse(x >= t[i],1,0)
+    error <- ifelse(y_predicted == datos$especie,0,1)
+    
+    r <- sum(error)/nrow(datos) 
+    
+    v <- c(v,r)
+  }
+  return(v)
+}
+
+r <- reglacorte(x= datos$removidos,t = c(1:8))
+
+## ej 17 
+
+which(r == min(r))
+# 6
+
+## 18
+
+ErrorClassTRUE <- function(g,y){
+  error <- ifelse(g != y,1,0)
+  r <- mean(error)
+  return(r)
+}
+
