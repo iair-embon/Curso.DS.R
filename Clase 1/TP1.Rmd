@@ -1,0 +1,126 @@
+---
+title: "TP1"
+author: "Iair Embon"
+date: "26/3/2022"
+output: html_document
+---
+
+## Ejercicio 1
+                                 
+```{r ej 1, echo=TRUE}
+
+x <- c(1,2,3) 
+y <- c(6,5,4)
+
+x * 2 
+x * y 
+x[1] * y[2] 
+1/x
+(1:10) * x[2]
+rep(c(1,1,2), times = 2)
+seq(from = 0, to = 10, length.out = 5) + 1:10
+
+```
+## Ejercicio 2
+                                 
+```{r ej 2, echo=TRUE}
+
+## a)
+tratamiento <- c(rep("A", times = 20), rep("B", times = 18), 
+                 rep("C", times = 22))
+
+## b)
+J <- seq(from = 1, to = 30, by = 2) 
+J[1] + J[8]
+
+```
+
+## Ejercicio 3
+                                 
+```{r ej 3, echo=TRUE}
+
+sum(1:100)
+
+```
+
+## Ejercicio 4
+                                 
+```{r ej 4, echo=TRUE}
+
+sum(sqrt(1:100))
+
+```
+## Ejercicio 5
+                                 
+```{r ej 5, echo=TRUE}
+
+## a)
+
+# 153 observaciones y 6 variables
+
+## b) 
+names(airquality)
+
+## c)
+sum(is.na(airquality$Ozone))
+sum(is.na(airquality$Solar.R))
+sum(is.na(airquality$Wind))
+sum(is.na(airquality$Temp))
+sum(is.na(airquality$Month))
+sum(is.na(airquality$Day))
+
+#  las primeras dos variables tienen datos faltantes
+
+## d)
+sum(airquality$Month==5)
+# 31
+
+
+```
+
+## Ejercicio 6
+                                 
+```{r ej 6, echo=TRUE}
+
+## a
+sum(mtcars$gear == 4)
+# 12 
+
+## b
+subs1 <- mtcars[mtcars$disp > 150 & mtcars$mpg > 20,]
+# alquel que tiene Displacement por arriba de 150 y Miles/(US) gallon
+# mayor a 20
+
+## c
+subs2 <- mtcars[mtcars$gear == 4 & mtcars$am == 1,]
+# 8 autos
+
+## d
+subs3 <- mtcars[mtcars$carb == 2,]
+mean_subs3 <- mean(subs3$mpg)
+# 22.4
+
+```
+
+## Ejercicio 7
+                                 
+```{r ej 7, echo=TRUE}
+
+## a
+df <- read.csv("arbolado-en-espacios-verdes.csv")
+# 51502 obs y 17 variables
+
+## b
+names(df)
+
+## c
+mean(df$altura_tot)
+
+## d
+
+
+## e
+arboles_cercanos <- df[df$espacio_ve == "AVELLANEDA, NICOLÁS, Pres.",]
+arboles_cercanos_ord <- sort(arboles_cercanos$espacio_ve)
+arboles_presentes <- unique(arboles_cercanos$nombre_com)
+```
