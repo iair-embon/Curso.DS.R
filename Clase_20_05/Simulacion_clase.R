@@ -9,7 +9,7 @@ q9 <- qexp(0.9,1/10)
 # lo estimo con R en mis datos generados
 qsombrero <- quantile(muchos_exp,0.9)
 
-# estimo lamda a partir del primedio a la menos 1
+# estimo lamda a partir del promedio a la menos 1
 lamda_est <- mean(muchos_exp)**-1
 qrulo <- (-log(1-0.9))/lamda_est
 
