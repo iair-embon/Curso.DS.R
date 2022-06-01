@@ -25,7 +25,7 @@ for (i in 1:length(p_boot)) {
   p_boot[i] <-length(x_sorteados[x_sorteados <= 40])/ length(x_sorteados)
 }
 
-es_p_muestra <- sd(p_boot)/ sqrt(nrow(df)) ### ????? esta bien dividir aca? por nrow(df) o length 50000?
+es_p_muestra <- sd(p_boot)
 
 
 ### 2 ??? se puede esto? o tengo que usar boostrap tambien?
@@ -47,12 +47,12 @@ for (i in 1:length(mediana_boot)) {
   mediana_boot[i] <- median(x_sorteados)
 }
 
-es_mediana_muestra <- sd(mediana_boot)/ sqrt(nrow(df))
+es_mediana_muestra <- sd(mediana_boot)
 
 ### 4
 
 # estimo la varianza
-var_muestra <- var(df$f) #### ¿¿¿¿¿¿¿¿ esto da bien? siento que da cualquiera
+var_muestra <- var(df$f) 
 
 varianza_boot <- rep(NaN, 10000)
 
@@ -61,7 +61,7 @@ for (i in 1:length(varianza_boot)) {
   varianza_boot[i] <- var(x_sorteados)
 }
 
-es_varianza_muestra <- sd(varianza_boot)/ sqrt(nrow(df))
+es_varianza_muestra <- sd(varianza_boot)
 
 ### 5
 
@@ -93,7 +93,7 @@ for (i in 1:length(p_boot_exp)) {
   p_boot_exp[i] <-pexp(40, lambda_est)
 }
 
-es_p_muestra_exp <- sd(p_boot_exp)/ sqrt(nrow(df))
+es_p_muestra_exp <- sd(p_boot_exp)
 
 ### 8
 # con los datos que tengo
@@ -126,7 +126,7 @@ for (i in 1:length(prom_boot_exp)) {
   prom_boot_exp[i] <-1/lambda_est
 }
 
-es_prom_muestra_exp <- sd(prom_boot_exp)/ sqrt(nrow(df))
+es_prom_muestra_exp <- sd(prom_boot_exp)
 
 ### 10
 
@@ -143,7 +143,7 @@ for (i in 1:length(mediana_boot_exp)) {
   mediana_boot_exp[i] <-  log(2)/lambda_est
 }
 
-es_mediana_muestra_exp <- sd(mediana_boot_exp)/sqrt(nrow(df))
+es_mediana_muestra_exp <- sd(mediana_boot_exp)
 
 
 ### 11
@@ -161,16 +161,12 @@ for (i in 1:length(varianza_boot_exp)) {
   varianza_boot_exp[i] <- 1/sqrt(lambda_est)
 }
 
-es_varianza_muestra_exp <- sd(varianza_boot_exp)/ sqrt(nrow(df))
+es_varianza_muestra_exp <- sd(varianza_boot_exp)
 
 
 ########### Parte 3
 
-# genero los datos
-lambda <- 1/10
-datos <- rexp(10000,lambda)
-
-### 12        ????????????? tengo que suponer un lambda aca? o solo poner la formulita?
+### 12        
 mu <- 1/lambda
 vari <- 1/lambda**2
 
