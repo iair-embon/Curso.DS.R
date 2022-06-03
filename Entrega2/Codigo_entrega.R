@@ -1,0 +1,106 @@
+########### Parte 3
+
+# Leo los datos
+df <- read.table("http://astrostatistics.psu.edu/datasets/GRB_afterglow.dat", 
+                 header=T, skip=1)
+
+# estimo varianza asumiendo una distribucion exponencial
+lambda_est <- 1/mean(df$f)
+
+
+### 12 
+
+#mu <- 1/lambda
+#vari <- 1/lambda**2
+
+#p_40 <- 1-exp(-lambda*40)
+
+#### 13
+lambda <- 0.03
+
+require(dplyr)
+
+p_40_sombrero <- df %>%
+  filter(f <= 40) %>%
+  nrow()/length(df$f)
+
+
+lambda_est <- 1/mean(df$f)
+
+p_40_rulo <- pexp(40, lambda_est)
+
+
+# creo una funcion que saque el ECME para el estimador sombrero
+ECME_sombrero <- function(n){
+  
+  Nrep <- 1000
+  
+  muchos_p_40_sombrero <- rep(NaN,Nrep)
+  
+  for (i in 1:Nrep) {
+    muchas_exponenciales <- rexp(n, 0.03)
+    p_sombrero <- length(muchas_exponenciales[muchas_exponenciales <= 40])/
+      length(muchas_exponenciales)
+    muchos_p_40_sombrero[i] <- p_sombrero
+    
+  }
+  
+  p_40 <- 1-exp(-lambda*40)
+  
+  ECME_sombrero <- sum((muchos_p_40_sombrero-  p_40)**2) / 
+    length(muchos_p_40_sombrero)
+  
+  return(ECME_sombrero)
+}
+
+# creo una funcion que saque el ECME para el estimador rulo
+ECME_rulo <- function(n){
+  
+  Nrep <- 1000
+  
+  muchos_p_40_rulo <- rep(NaN,Nrep)
+  
+  for (i in 1:Nrep) {
+    muchas_exponenciales <- rexp(n, 0.03)
+    lambda_est <- 1/mean(muchas_exponenciales)
+    p_rulo <- pexp(40, lambda_est)
+    muchos_p_40_rulo[i] <- p_rulo
+  }
+  
+  p_40 <- 1-exp(-lambda*40)
+  
+  ECME_rulo <- sum((muchos_p_40_rulo -  p_40)**2) / 
+    length(muchos_p_40_rulo)
+  
+  return(ECME_rulo)
+}
+
+
+# pruebo la funcion con diferentes ns
+
+# n50
+ECME_sombrero_n50 <- ECME_sombrero(n=50)
+ECME_rulo_n50 <- ECME_rulo(n=50)
+
+# n150
+ECME_sombrero_n150 <- ECME_sombrero(n=150)
+ECME_rulo_n150 <- ECME_rulo(n=150)
+
+# n200
+ECME_sombrero_n200 <- ECME_sombrero(n=200)
+ECME_rulo_n200 <- ECME_rulo(n=200)
+
+# n500
+ECME_sombrero_n500 <- ECME_sombrero(n=500)
+ECME_rulo_n500 <- ECME_rulo(n=500)
+
+df.ECME <- data.frame(estimador = c("rulo","sombrero"),
+                      n50 = c(ECME_rulo_n50,ECME_sombrero_n50),
+                      n150= c(ECME_rulo_n150,ECME_sombrero_n150),
+                      n200= c(ECME_rulo_n200,ECME_sombrero_n200),
+                      n500= c(ECME_rulo_n500,ECME_sombrero_n500))
+
+print(df.ECME)
+
+# Se prefiere el estimador rulo, ya que en cada estimacion 
+# tuvo un menor error cuadratico medio empirico.
