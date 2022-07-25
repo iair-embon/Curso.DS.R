@@ -61,7 +61,7 @@ plot(density(d$mc))
 
 Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
 ```{r}
-d %>% 
+d %>%  ## no me estarian saliendo las leyendas, despues reviso
   select(ConfMean,PC,Participant) %>% 
   # normalizo el promedio de confianza por sujeto para que este en una escala similar a la del desempeno
   mutate(ConfMean = ConfMean/4, nr = row_number()) %>%
