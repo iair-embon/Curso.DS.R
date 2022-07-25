@@ -69,16 +69,27 @@ plot(density(d$mc))
 
 Para comparar el desempeño de distintos algoritmos vamos a separar los datos en un conjunto de entrenamiento y un conjunto de testeo. Para eso vamos a reservar el 10% de los datos para testeo y usar el 90% restante para entrenamiento. 
 
+1. Defina una variable llamada `train_prop` y asigne el valor acorde a una proporcion del 90% de los casos. 
+2. Defina un vector llamado `train_indices` con los indices que marcan aquellas filas que van a integrar nuestro conjunto de entrenamiento con una proporcion definida por `train_prop`.  
+
 ```{r}
+train_prop <- 0.9
 train_indices <- sample(
   nrow(df_total),
-  round(nrow(df_total)*0.9)
+  round(nrow(df_total)*train_prop)
 )
+```
+
+Con ese vector ya definido separamos los dos datasets. 
+
+```{r}
 train_set <- df_total[train_indices, ]
 test_set <- df_total[-train_indices, ]
 ```
 
-A su vez necesitamos implementar un metodo de validacion cruzada para el ajuste de hiperparametros en los distintos algoritmos. Dado el volumen de datos consideramos que lo mas optimo es implementar una validacion cruzada de tipo leave-one-out. Para esto necesitamos crear una funcion que pueda ser generalizable para cualquier cantidad de hiperparametros (en tanto dimensiones) y tambien para distintas metricas.
+A su vez necesitamos implementar un metodo de validacion cruzada para el ajuste de hiperparametros en los distintos algoritmos. Dado el volumen de datos consideramos que lo mas optimo es implementar una validacion cruzada de tipo leave-one-out asi incrementamos la cantidad de datos que podemos usar para entrenar los modelos. Para esto necesitamos crear una funcion que pueda ser generalizable para cualquier cantidad de hiperparametros (en tanto dimensiones) y tambien para distintas metricas. 
+
+Lo que queremos entonces es una funcion llamada `loocv_fun` 
 
 ```{r}
 loocv_fun <- function(datos, lista_hiperparametros, metodo){
