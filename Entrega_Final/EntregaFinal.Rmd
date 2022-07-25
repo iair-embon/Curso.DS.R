@@ -20,7 +20,7 @@ basename(getwd())
 # load the function to get the df list
 source(root$find_file("Entrega_Final/df_total_filtered.Rda")) ## me tira un error aca, no se poque lo voy a esta resolviendo
 
-load("~/Documents/Investigación/Curso.DS.R/Entrega_Final/df_total_filtered.Rda")
+load("./df_total_filtered.Rda")
 ```
 
 Lo exploro
@@ -63,8 +63,6 @@ Exploro la otra variable de interes (metacognicion)
 ```{r}
 plot(density(d$mc))
 ```
-
-
 
 Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
 ```{r}
