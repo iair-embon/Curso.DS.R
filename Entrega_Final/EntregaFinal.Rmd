@@ -5,26 +5,55 @@ date: '2022-07-25'
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+Cargo los datos
+```{r}
+# voy a la carpeta del proyecto
+root <- rprojroot::is_rstudio_project
+basename(getwd())
+
+# load the function to get the df list
+source(root$find_file("Entrega_Final/df_total_filtered.Rda")) ## me tira un error aca, no se poque lo voy a esta resolviendo
+
+load("~/Documents/Investigación/Curso.DS.R/Entrega_Final/df_total_filtered.Rda")
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+Lo exploro
+```{r}
+str(df_total)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Veo la cantidad de participantes
+```{r}
+print(length(unique(df_total$Participant)))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+Exploro la variable de interes (Confianza)
+```{r}
+hist(df_total$confidence_key)
+```
+
+Convierto el df por trials en un df por participantes
+```{r}
+library(dplyr)
+
+d <- df_total %>%
+  select(!c(RelyOn,
+            Problems,
+            ConfKey1,
+            ConfKey2,
+            ConfKey3,
+            ConfKey4,
+            discrimination_is_correct,
+            confidence_key,
+            trials,
+            PointDifference,
+            ReacTime_DiscTask,
+            ReacTime_ConfTask)) %>%
+  distinct(Participant,.keep_all = TRUE)
+```
+
+Exploro la otra variable de interes (metacognicion)
+```{r}
+plot(density(d$mc))
+```
