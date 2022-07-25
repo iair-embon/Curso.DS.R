@@ -5,6 +5,12 @@ date: '2022-07-25'
 output: html_document
 ---
 
+```{r}
+library(tidyverse)
+```
+
+
+
 Cargo los datos
 ```{r}
 # voy a la carpeta del proyecto
@@ -57,3 +63,52 @@ Exploro la otra variable de interes (metacognicion)
 ```{r}
 plot(density(d$mc))
 ```
+
+
+# Validacion Cruzada y Test Set
+
+Para comparar el desempeño de distintos algoritmos vamos a separar los datos en un conjunto de entrenamiento y un conjunto de testeo. Para eso vamos a reservar el 10% de los datos para testeo y usar el 90% restante para entrenamiento. 
+
+```{r}
+train_indices <- sample(
+  nrow(df_total),
+  round(nrow(df_total)*0.9)
+)
+train_set <- df_total[train_indices, ]
+test_set <- df_total[-train_indices, ]
+```
+
+A su vez necesitamos implementar un metodo de validacion cruzada para el ajuste de hiperparametros en los distintos algoritmos. Dado el volumen de datos consideramos que lo mas optimo es implementar una validacion cruzada de tipo leave-one-out. Para esto necesitamos crear una funcion que pueda ser generalizable para cualquier cantidad de hiperparametros (en tanto dimensiones) y tambien para distintas metricas.
+
+```{r}
+loocv_fun <- function(datos, lista_hiperparametros, metodo){
+  loocv_sample <- function(indice, ...){
+    train_loocv <- datos[-indice, ]
+    test_loocv <- datos[indice, ]
+    metodo(train_loocv, test_loocv, ...)
+  }
+  
+  
+  #Itero por los hiperparametros
+  pmap(
+    lista_hiperparametros,
+    metodo,
+    datos = datos
+  )
+}
+
+lapply(
+      1:nrow(datos),
+      function(loocv_ind) metodo(datos[-loocv_ind, ])
+    )
+```
+
+
+
+```{r}
+sapply(
+      1:nrow(iris),
+      function(loocv_ind) mean(iris$Sepal.Length[-loocv_ind])
+    )
+```
+
