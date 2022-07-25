@@ -41,7 +41,7 @@ hist(df_total$confidence_key)
 
 Convierto el df por trials en un df por participantes
 ```{r}
-library(dplyr)
+library(tidyverse)
 
 d <- df_total %>%
   select(!c(RelyOn,
@@ -65,61 +65,79 @@ plot(density(d$mc))
 ```
 
 
-# Validacion Cruzada y Test Set
+<<<<<<< HEAD
 
-Para comparar el desempeño de distintos algoritmos vamos a separar los datos en un conjunto de entrenamiento y un conjunto de testeo. Para eso vamos a reservar el 10% de los datos para testeo y usar el 90% restante para entrenamiento. 
-
-1. Defina una variable llamada `train_prop` y asigne el valor acorde a una proporcion del 90% de los casos. 
-2. Defina un vector llamado `train_indices` con los indices que marcan aquellas filas que van a integrar nuestro conjunto de entrenamiento con una proporcion definida por `train_prop`.  
-
+=======
+Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
 ```{r}
-train_prop <- 0.9
-train_indices <- sample(
-  nrow(df_total),
-  round(nrow(df_total)*train_prop)
-)
+d %>%  ## no me estarian saliendo las leyendas, despues reviso
+  select(ConfMean,PC,Participant) %>% 
+  # normalizo el promedio de confianza por sujeto para que este en una escala similar a la del desempeno
+  mutate(ConfMean = ConfMean/4, nr = row_number()) %>%
+  arrange(ConfMean) %>%
+  mutate(nr = row_number()) %>%
+  ggplot(aes(x= nr)) +
+  geom_point(aes(y=ConfMean), size = 2, color = "black") +
+  geom_point(aes(y=PC), size = 2, color = "grey")+
+  scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.1))) +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.margin = margin(1, 1,1, 1, "cm"),
+        legend.text =  element_text(size = 25),
+        legend.position = c(0.7, 0.2),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(size = 30),
+        axis.text.y = element_text(size = 30),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+Con esto se puede medir calibracion. Si la media de la confianza esta por encima de 0.72 entonces implica sobreconfianza, y si esta por debajo implica bajaconfianza. 
+
+Agregamos una variable que va a decir si es overconfidence y underconfidence para cada participante. 
+1 si es overconfidence.
+```{r}
+d <- d %>%
+  mutate(ConfMean.norm = ConfMean/4, 
+         overconfidence = ifelse(ConfMean.norm > 0.72, 1, 0))
+# veo cuantos hay
+d %>%
+  summarise(n= sum(overconfidence))
+# hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
+
 ```
 
-Con ese vector ya definido separamos los dos datasets. 
 
+Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
 ```{r}
-train_set <- df_total[train_indices, ]
-test_set <- df_total[-train_indices, ]
+model <- glm(overconfidence ~ DomainAntagonism + 
+               DomainDetachment +
+               DomainDisinhibition +
+               DomainNegativeAffect + 
+               DomainPsychoticism,
+             family=binomial(link='logit'),
+             data=d)
+summary(model)
 ```
 
-A su vez necesitamos implementar un metodo de validacion cruzada para el ajuste de hiperparametros en los distintos algoritmos. Dado el volumen de datos consideramos que lo mas optimo es implementar una validacion cruzada de tipo leave-one-out asi incrementamos la cantidad de datos que podemos usar para entrenar los modelos. Para esto necesitamos crear una funcion que pueda ser generalizable para cualquier cantidad de hiperparametros (en tanto dimensiones) y tambien para distintas metricas. 
-
-Lo que queremos entonces es una funcion llamada `loocv_fun` 
-
+Corro otro modelo logistico pero esta vez controlo por edad y genero
 ```{r}
-loocv_fun <- function(datos, lista_hiperparametros, metodo){
-  loocv_sample <- function(indice, ...){
-    train_loocv <- datos[-indice, ]
-    test_loocv <- datos[indice, ]
-    metodo(train_loocv, test_loocv, ...)
-  }
-  
-  
-  #Itero por los hiperparametros
-  pmap(
-    lista_hiperparametros,
-    metodo,
-    datos = datos
-  )
-}
-
-lapply(
-      1:nrow(datos),
-      function(loocv_ind) metodo(datos[-loocv_ind, ])
-    )
+model2 <- glm(overconfidence ~ DomainAntagonism + 
+               DomainDetachment +
+               DomainDisinhibition +
+               DomainNegativeAffect + 
+               DomainPsychoticism +
+               gender +
+               age,
+             family=binomial(link='logit'),
+             data=d)
+summary(model2)
 ```
 
 
-
-```{r}
-sapply(
-      1:nrow(iris),
-      function(loocv_ind) mean(iris$Sepal.Length[-loocv_ind])
-    )
-```
-
+>>>>>>> e4fb30b37ec0771ab9ec9f7b1817909c441f5508
