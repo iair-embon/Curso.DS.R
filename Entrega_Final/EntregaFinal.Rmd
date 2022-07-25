@@ -35,7 +35,7 @@ hist(df_total$confidence_key)
 
 Convierto el df por trials en un df por participantes
 ```{r}
-library(dplyr)
+library(tidyverse)
 
 d <- df_total %>%
   select(!c(RelyOn,
@@ -57,3 +57,53 @@ Exploro la otra variable de interes (metacognicion)
 ```{r}
 plot(density(d$mc))
 ```
+
+
+Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
+```{r}
+d %>% 
+  select(ConfMean,PC,Participant) %>% 
+  # normalizo el promedio de confianza por sujeto para que este en una escala similar a la del desempeno
+  mutate(ConfMean = ConfMean/4, nr = row_number()) %>%
+  arrange(ConfMean) %>%
+  mutate(nr = row_number()) %>%
+  ggplot(aes(x= nr)) +
+  geom_point(aes(y=ConfMean), size = 2, color = "black") +
+  geom_point(aes(y=PC), size = 2, color = "grey")+
+  scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.1))) +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.margin = margin(1, 1,1, 1, "cm"),
+        legend.text =  element_text(size = 25),
+        legend.position = c(0.7, 0.2),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(size = 30),
+        axis.text.y = element_text(size = 30),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+Con esto se puede medir calibracion. Si la media de la confianza esta por encima de 0.72 entonces implica sobreconfianza, y si esta por debajo implica bajaconfianza. 
+
+Agregamos una variable que va a decir si es overconfidence y underconfidence para cada participante. 
+1 si es overconfidence.
+```{r}
+d <- d %>%
+  mutate(ConfMean.norm = ConfMean/4, 
+         overconfidence = ifelse(ConfMean.norm > 0.72, 1, 0))
+# veo cuantos hay
+d %>%
+  summarise(n= sum(overconfidence))
+# hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
+
+```
+
+
+
+
+
