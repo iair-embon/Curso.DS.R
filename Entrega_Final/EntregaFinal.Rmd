@@ -65,9 +65,7 @@ plot(density(d$mc))
 ```
 
 
-<<<<<<< HEAD
 
-=======
 Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
 ```{r}
 d %>%  ## no me estarian saliendo las leyendas, despues reviso
@@ -139,5 +137,3 @@ model2 <- glm(overconfidence ~ DomainAntagonism +
 summary(model2)
 ```
 
-
->>>>>>> e4fb30b37ec0771ab9ec9f7b1817909c441f5508
