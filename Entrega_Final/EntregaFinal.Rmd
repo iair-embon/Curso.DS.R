@@ -104,6 +104,30 @@ d %>%
 ```
 
 
+Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
+```{r}
+model <- glm(overconfidence ~ DomainAntagonism + 
+               DomainDetachment +
+               DomainDisinhibition +
+               DomainNegativeAffect + 
+               DomainPsychoticism,
+             family=binomial(link='logit'),
+             data=d)
+summary(model)
+```
 
+Corro otro modelo logistico pero esta vez controlo por edad y genero
+```{r}
+model2 <- glm(overconfidence ~ DomainAntagonism + 
+               DomainDetachment +
+               DomainDisinhibition +
+               DomainNegativeAffect + 
+               DomainPsychoticism +
+               gender +
+               age,
+             family=binomial(link='logit'),
+             data=d)
+summary(model2)
+```
 
 
