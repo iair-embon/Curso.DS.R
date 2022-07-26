@@ -283,7 +283,6 @@ single_domain_formula <- paste0(
 )
 ```
 
-<<<<<<< HEAD
 Calcular los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). Para cada caso estimar, usando 10000 muestras bootstrap no parametricas, la media y el intervalo del 95% de confianza para cada coeficiente $\beta$ y guardarlo en un dataframe llamado `bootstrap_dominio`
 
 ```{r}
@@ -361,14 +360,3 @@ spam %>%
   ) + geom_smooth(span = 0.3)
 ```
 Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles y representar en una tablar sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
-=======
->>>>>>> d98c1159e790986fef696791fa22f74e6b75cfb3
-
-```{r}
-full_domain_formula <- as.formula(
-  paste0(
-    'overconfidence ~ ', str_flatten(domain_columns, ' + ')
-         )
-  )
-```
-
