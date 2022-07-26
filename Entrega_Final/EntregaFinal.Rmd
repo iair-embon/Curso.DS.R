@@ -108,6 +108,11 @@ d %>%
 
 ```
 
+Preproceso la varible genero
+```{r}
+d$gender <- ifelse(d$gender == "Masculino",1,0)
+```
+
 
 Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
 ```{r}
@@ -134,6 +139,140 @@ model2 <- glm(overconfidence ~ DomainAntagonism +
              data=d)
 summary(model2)
 ```
+
+#Regresion logistica usando metodos de regularizaciones
+
+Corro una regresion logistica para predecir overconfidence usando tres metodos de regularizacion (ridge, lasso, elastic net).
+Las primeras regresiones seran con las facetas, y las segundas seran con los dominios.
+
+Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usaremos leave one out cross validation (LOOCV). Para eso crearemos nuestra propia funcion de LOOCV
+
+Funcion de LOOCV
+```{r}
+#### ME TIRA ERROR, ESTA FUNCION ESTA MAL, TODO EL SISTEMA ESTA MAL
+
+# creo una secuencua de posibles lambdas 
+posibles_lambdas <- seq(0.01, 20 , length.out = 300)
+
+for (j in 1:nrow(d.regre.regul.facetas)){
+  
+  # agrego una variable ID (participantes la saque para correr el modelo)
+  d.regre.regul.facetas <- d.regre.regul.facetas %>% 
+    mutate(id = row_number())
+  
+  # datos de entrenamiento (todos menos 1)
+  train <- d.regre.regul.facetas %>%
+    filter(id != d.regre.regul.facetas$id[j])
+  
+  # agarro el dato que quedo para el testeo
+  test  <- anti_join(d.regre.regul.facetas, train, by = 'id')
+  
+  # Guardo las observaciones de overconfidence en entrenamiento y testeo(para entrenar el modelo y testearlo)
+  y.train <- train$overconfidence
+  y.test <- test$overconfidence
+  
+  # ahora les saco overconfidence (ya que no tiene que ir como predictor)
+  train <- train %>%
+    select(!overconfidence)
+  
+  test <- test %>%
+    select(!overconfidence)
+  
+  # transformo en matrix
+  train.m <- train %>% data.matrix()
+  test.m <- test %>% data.matrix()
+  
+  # corro el modelo con los datos de entrenamiento
+  modelo <- glmnet(train.m, y.train, family = "binomial",
+                          alpha = 0, lambda = posibles_lambdas)
+  
+  # tomo los lambdas generados por el modelo (los mismo que le puse, pero tomo su orden)
+  lambdas <- modelo$lambda
+  
+  # Creo la variable en la que voy a guardar el error para cada lambda
+  error <- rep(NaN, length(nrow(d.regre.regul.facetas)))
+  
+  for (i in 1:length(lambdas)) {
+    # obtengo el modelo que genera cada lambda
+    lambda_i <- coef(modelo, s = lambdas[i])
+    
+    # hago prediccion sobre la data de testeo
+    probabilities <- lambda_i %>% predict(new = test.m, type = "response")
+    predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+    # Model accuracy
+    caso.observado <- y.test
+    error[i] <- mean(caso.prediccion == caso.observado) # revisar que sacar aca
+  }
+
+}
+
+```
+
+
+Cargo la libreria 
+```{r}
+library(glmnet)
+```
+
+#Para facetas
+
+Primero trasnformo el dataframe a una matrix, como lo solicita la funcion necesaria para correr la reregresion usando regularizaciones. Ademas saco algunas variables que no van a ser necesarias.
+
+```{r}
+
+# saco las variables que no me interesan para esta parte de facetas
+d.regre.regul.facetas <- d %>%
+  select(!c(Participant,
+            DomainNegativeAffect,
+            DomainDetachment,
+            DomainAntagonism,
+            DomainDisinhibition,
+            DomainPsychoticism,
+            PC,
+            ConfMean,
+            ConfSD,
+            ReacTimeMean_DiscTask,
+            ReacTimeSD_DiscTask,
+            ReacTimeMean_ConfTask,
+            ReacTimeSD_ConfTask,
+            mc,
+            ConfMean.norm))
+
+d_mat <- d.regre.regul.facetas %>%
+  data.matrix()
+```
+
+Ridge
+```{r}
+Ridge_Facetas <- glmnet(d_mat, d$overconfidence, family = "binomial",
+                        alpha = 0, lambda = NULL)
+
+plot(Ridge_Facetas)
+
+```
+
+Lasso
+```{r}
+
+```
+
+Elastic net
+```{r}
+
+```
+
+
+
+#Para Dominios
+
+
+Ridge
+```{r}
+
+```
+
+
+
 
 
 # Dominios
