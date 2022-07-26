@@ -105,7 +105,6 @@ d <- d %>%
 d %>%
   summarise(n= sum(overconfidence))
 # hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
-
 ```
 
 Preproceso la varible genero
@@ -385,12 +384,11 @@ resultado_mejor_subconjunto <- expand.grid(1:nrow(d), mejor_subconjunto) %>%
   aes(x = Var2, y = acierto)
 ) +
   stat_summary(geom = 'pointrange') +
-  coord_flip()
+  coord_flip() +
+  theme(axis.text.y = element_text(size = 5))
 ```
 
 Representar en una tabla sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
-
-
 
 ```{r}
 spam_train <- d %>% select(Anhedonia:Withdrawal) %>% data.matrix()
