@@ -199,7 +199,7 @@ bootstrap_dominio <- sapply(
   pivot_wider(names_from = tipo_medicion, values_from = estimacion)
 ```
 
-Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo indicando con una linea punteada el valor de 0 en el grafico. 
+Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
 
 ```{r}
 bootstrap_dominio %>%
@@ -217,3 +217,8 @@ bootstrap_dominio %>%
   coord_flip()
 ```
 
+Interpretar los resultados
+
+Evaluar un ajuste polinomial para la regresion logistica. Para esto generar una grilla de posibles valores para el grado del polinomio que vaya de 1 a 30 (con intervalos de 1) y ajustar el modelo usando la funcion `poly`. Para cada grado posible del polinomio utilizar un procedimiento leave-one-out para calcular el accuracy y elegir asi el grado optimo del polinomio a utilizar.
+
+Calcular el intervalo de confianza del 95% del predictor con el grado optimo del polinomio escogido en el punto anterior. 
