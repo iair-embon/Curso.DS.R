@@ -214,11 +214,40 @@ bootstrap_dominio %>%
     position = position_dodge(.8)
   ) +
   geom_hline(yintercept = 0) +
-  coord_flip()
+  coord_flip() +
+  ylab('Estimacion') + xlab('Coeficientes') +
+  scale_color_discrete('Tipo de Modelo', labels = c('Multiple', 'Simple'))
 ```
 
 Interpretar los resultados
 
-Evaluar un ajuste polinomial para la regresion logistica. Para esto generar una grilla de posibles valores para el grado del polinomio que vaya de 1 a 30 (con intervalos de 1) y ajustar el modelo usando la funcion `poly`. Para cada grado posible del polinomio utilizar un procedimiento leave-one-out para calcular el accuracy y elegir asi el grado optimo del polinomio a utilizar.
+Evaluar un ajuste polinomial para la regresion logistica generando una grilla de posibles valores para el grado del polinomio que vaya de 1 a 15 (con intervalos de 1) y ajustar el modelo usando la funcion `poly`. Para cada grado posible del polinomio utilizar un procedimiento leave-one-out para calcular el accuracy y elegir asi el grado optimo del polinomio a utilizar.
 
-Calcular el intervalo de confianza del 95% del predictor con el grado optimo del polinomio escogido en el punto anterior. 
+```{r, warning=FALSE}
+grilla_grado <- expand.grid(indice = 1:nrow(d), grado = 1:15)
+
+spam <- grilla_grado %>% mutate(
+  probabilidad = grilla_grado %>% 
+    pmap(
+      ~ glm(overconfidence ~ poly(DomainDisinhibition, .y), family = binomial(link = 'logit'),
+            data = d[-.x, ]
+            ) %>% 
+        predict(d[.x, ], type = 'response')
+      ) %>% 
+    unlist(),
+  prediccion = ifelse(probabilidad > 0.5, 1, 0),
+  acierto = prediccion == d[indice, 'overconfidence']
+  ) %>% group_by(grado) %>% summarise(accuracy = mean(acierto))
+
+spam %>%
+  ggplot(
+    aes(x = grado, y = accuracy)
+  ) + geom_smooth(span = 0.3)
+```
+
+Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles y representar en una tablar sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
+
+```{r}
+
+```
+
