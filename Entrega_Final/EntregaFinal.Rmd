@@ -147,64 +147,77 @@ Las primeras regresiones seran con las facetas, y las segundas seran con los dom
 
 Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usaremos leave one out cross validation (LOOCV). Para eso crearemos nuestra propia funcion de LOOCV
 
-Funcion de LOOCV
-```{r}
-#### 
-
-# creo una secuencua de posibles lambdas 
-posibles_lambdas <- seq(0.01, 20 , length.out = 300)
-
-# creo una matriz en donde se van a ir guardando los errores de cada lambda y cada vez que hago LOOCV
-matriz.errores <- matrix(data=NA,nrow= nrow(d.regre.regul.facetas),
-                         ncol= length(posibles_lambdas))
-
-for (j in 1:nrow(d.regre.regul.facetas)){
-  
-  # datos de entrenamiento (todos menos 1)
-  train <- d.regre.regul.facetas %>%
-    filter(Participant != d.regre.regul.facetas$Participant[j])
-  
-  # agarro el dato que quedo para el testeo
-  test  <- anti_join(d.regre.regul.facetas, train, by = 'Participant')
-  
-  # Guardo las observaciones de overconfidence en entrenamiento y testeo (para entrenar el modelo y testearlo)
-  y.train <- train$overconfidence
-  y.test <- test$overconfidence
-  
-  # ahora les saco overconfidence y Participant (ya que no tienen que ir como predictores)
-  train <- train %>% select(!c(overconfidence,Participant))
-  test <- test %>% select(!c(overconfidence,Participant))
-  
-  # transformo en matrix
-  train.m <- train %>% data.matrix()
-  test.m <- test %>% data.matrix()
-  
-  # corro el modelo con los datos de entrenamiento
-  modelo <- glmnet(train.m, y.train, family = "binomial",
-                          alpha = 0, lambda = posibles_lambdas)
-  
-  # hago prediccion sobre la data de testeo
-  probabilities <- modelo %>% predict(newx = test.m, type = "response")
-  predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
-  # Model accuracy
-  matriz.errores[j,] <- predicted.classes == y.test
-}
-
-# saco los root mean squared errors para cada lambda
-lambda.RMSE <- sqrt(((rowSums(matriz.errores))**2)/nrow(d.regre.regul.facetas))
-
-```
-
-
 Cargo la libreria 
 ```{r}
 library(glmnet)
 ```
 
+Funcion de LOOCV
+```{r}
+#### 
+
+LOOCV.fun.glmnet <- function(df, alpha.dado){
+  # creo una secuencua de posibles lambdas 
+  posibles_lambdas <- seq(0.01, 20 , length.out = 300)
+  
+  # creo una matriz en donde se van a ir guardando los errores de cada lambda y cada vez que hago LOOCV
+  matriz.errores <- matrix(data=NA,nrow= nrow(df),
+                           ncol= length(posibles_lambdas))
+  
+  for (j in 1:nrow(df)){
+    # datos de entrenamiento (todos menos 1)
+    train <- d.regre.regul.facetas %>%
+      filter(Participant != df$Participant[j])
+    
+    # agarro el dato que quedo para el testeo
+    test  <- anti_join(df, train, by = 'Participant')
+    
+    # Guardo las observaciones de overconfidence en entrenamiento y testeo (para entrenar el modelo y testearlo)
+    y.train <- train$overconfidence
+    y.test <- test$overconfidence
+    
+    # ahora les saco overconfidence y Participant (ya que no tienen que ir como predictores)
+    train <- train %>% select(!c(overconfidence,Participant))
+    test <- test %>% select(!c(overconfidence,Participant))
+    
+    # transformo en matrix
+    train.m <- train %>% data.matrix()
+    test.m <- test %>% data.matrix()
+    
+    # corro el modelo con los datos de entrenamiento
+    modelo <- glmnet(train.m, y.train, family = "binomial",
+                            alpha = alpha.dado , lambda = posibles_lambdas)
+    
+    # hago prediccion sobre la data de testeo
+    probabilities <- modelo %>% predict(newx = test.m, type = "response")
+    predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+    # Model accuracy
+    matriz.errores[j,] <- predicted.classes == y.test
+  }
+  
+  # saco los root mean squared errors para cada lambda
+  lambda.RMSE <- sqrt(((rowSums(matriz.errores))**2)/nrow(df))
+  
+  return(lambda.RMSE)
+  }
+
+  
+  ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
+
+cvfit <- cv.glmnet(train.m, y.train, family = "binomial",
+                          alpha = 0, lambda = posibles_lambdas)
+
+plot(cvfit)
+cvfit$lambda.min
+coef(cvfit, s = "lambda.min")
+
+# no coincide ni en pedo, esta mal mi funcion asumo
+
+```
+
 #Para facetas
 
-Primero trasnformo el dataframe a una matrix, como lo solicita la funcion necesaria para correr la reregresion usando regularizaciones. Ademas saco algunas variables que no van a ser necesarias.
-
+Primero saco algunas variables que no van a ser necesarias.
 ```{r}
 
 # saco las variables que no me interesan para esta parte de facetas
@@ -224,41 +237,24 @@ d.regre.regul.facetas <- d %>%
             mc,
             ConfMean.norm))
 
-d_mat <- d.regre.regul.facetas %>%
-  data.matrix()
 ```
 
 Ridge
 ```{r}
-Ridge_Facetas <- glmnet(d_mat, d$overconfidence, family = "binomial",
-                        alpha = 0, lambda = NULL)
-
-plot(Ridge_Facetas)
+lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
 
 ```
 
 Lasso
 ```{r}
+lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
 
 ```
 
 Elastic net
 ```{r}
-
+lambdaOptimo_facetas_elastic <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
 ```
-
-
-
-#Para Dominios
-
-
-Ridge
-```{r}
-
-```
-
-
-
 
 
 # Dominios
