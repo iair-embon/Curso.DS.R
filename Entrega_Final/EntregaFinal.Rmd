@@ -158,7 +158,7 @@ Funcion de LOOCV
 
 LOOCV.fun.glmnet <- function(df, alpha.dado){
   # creo una secuencua de posibles lambdas 
-  posibles_lambdas <- seq(0.01, 20 , length.out = 300)
+  posibles_lambdas <- seq(0.0000001, 0.01, length.out = 1000)
   
   # creo una matriz en donde se van a ir guardando los errores de cada lambda y cada vez que hago LOOCV
   matriz.errores <- matrix(data=NA,nrow= nrow(df),
@@ -186,7 +186,7 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
     
     # corro el modelo con los datos de entrenamiento
     modelo <- glmnet(train.m, y.train, family = "binomial",
-                            alpha = alpha.dado , lambda = posibles_lambdas)
+                            alpha = alpha.dado , nlambda = 500)
     
     # hago prediccion sobre la data de testeo
     probabilities <- modelo %>% predict(newx = test.m, type = "response")
@@ -198,14 +198,14 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
   # saco los root mean squared errors para cada lambda
   lambda.RMSE <- sqrt(((rowSums(matriz.errores))**2)/nrow(df))
   
-  return(lambda.RMSE)
+  return(matriz.errores)
   }
 
   
   ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
 
-cvfit <- cv.glmnet(train.m, y.train, family = "binomial",
-                          alpha = 0, lambda = posibles_lambdas)
+cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
+                          alpha = 1)
 
 plot(cvfit)
 cvfit$lambda.min
@@ -240,9 +240,9 @@ d.regre.regul.facetas <- d %>%
 ```
 
 Ridge
-```{r}
+```{r, warning=F}
 lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
-
+lambdaOptimo_facetas_ridge %>% apply(2, mean) %>% plot(type ='l', log = 'x')
 ```
 
 Lasso
@@ -267,20 +267,22 @@ domain_columns <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
 
 
 ```{r}
-sapply(
+mejor_subconjunto <- sapply(
   1:5, function(x) combn(domain_columns, x, simplify = F) %>% 
                  lapply(function(y) str_flatten(y, ' + ')) %>% 
                  unlist()
-       )  %>% unlist()
+       )  %>% unlist() %>%
+  sapply(
+    function(x) paste0('overconfidence ~ ', x) 
+  ) %>% unname()
 ```
 
 
 
 
 ```{r}
-single_domain_formula <- paste0(
-  'overconfidence ~ ', domain_columns
-)
+formula_dominio_simple <- mejor_subconjunto[1:5]
+formula_dominio_completa <- mejor_subconjunto[length(mejor_subconjunto)]
 ```
 
 Calcular los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). Para cada caso estimar, usando 10000 muestras bootstrap no parametricas, la media y el intervalo del 95% de confianza para cada coeficiente $\beta$ y guardarlo en un dataframe llamado `bootstrap_dominio`
@@ -357,6 +359,52 @@ spam <- grilla_grado %>% mutate(
 spam %>%
   ggplot(
     aes(x = grado, y = accuracy)
-  ) + geom_smooth(span = 0.3)
+  ) + geom_smooth(span = 0.3) +
+  geom_hline(
+    yintercept = d %>% count(overconfidence) %>% mutate(n = n/sum(n)) %>% pull(n) %>% max(),
+    linetype = 'dashed'
+  )
 ```
-Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles y representar en una tablar sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
+
+Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles.
+
+```{r}
+predicciones_mejor_subconjunto <- pmap(
+  expand.grid(1:nrow(d), mejor_subconjunto) %>% mutate(Var2 = as.character(Var2)),
+  ~ glm(
+      as.formula(.y), family = binomial(link = 'logit'), data = d, subset = -.x
+    ) %>% predict(d[.x, ], type = 'response')
+) %>%
+  unlist()
+
+resultado_mejor_subconjunto <- expand.grid(1:nrow(d), mejor_subconjunto) %>%
+  mutate(pred = predicciones_mejor_subconjunto,
+         respuesta = ifelse(pred > 0.5, 1, 0),
+         acierto = as.numeric(respuesta == d[Var1, 'overconfidence'])) %>%
+  ggplot(
+  aes(x = Var2, y = acierto)
+) +
+  stat_summary(geom = 'pointrange') +
+  coord_flip()
+```
+
+Representar en una tabla sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
+
+
+
+```{r}
+spam_train <- d %>% select(Anhedonia:Withdrawal) %>% data.matrix()
+spam_y_train <- d %>% pull(overconfidence)
+
+
+
+map(
+  1:nrow(spam_train),
+  ~ glmnet(spam_train[-.x, ], spam_y_train[-.x], family = "binomial",
+                            alpha = 0, lambda = seq(0.01, 20,length.out = 100)) %>% 
+    predict(spam_train[.x, ], type = 'response')
+) %>% map(
+  ~ ifelse(.x > 0.5, 1, 0)
+) %>% unlist() %>% matrix(nrow = nrow(spam_train), ncol = 100, byrow = T)
+```
+
