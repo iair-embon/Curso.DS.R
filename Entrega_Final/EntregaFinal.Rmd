@@ -18,7 +18,7 @@ root <- rprojroot::is_rstudio_project
 basename(getwd())
 
 # load the function to get the df list
-source(root$find_file("Entrega_Final/df_total_filtered.Rda")) ## me tira un error aca, no se poque lo voy a esta resolviendo
+# source(root$find_file("Entrega_Final/df_total_filtered.Rda")) ## me tira un error aca, no se poque lo voy a esta resolviendo
 
 load("./df_total_filtered.Rda")
 ```
@@ -133,5 +133,41 @@ model2 <- glm(overconfidence ~ DomainAntagonism +
              family=binomial(link='logit'),
              data=d)
 summary(model2)
+```
+
+
+# Dominios
+
+
+```{r}
+domain_columns <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
+```
+
+
+
+```{r}
+sapply(
+  1:5, function(x) combn(domain_columns, x, simplify = F) %>% 
+                 lapply(function(y) str_flatten(y, ' + ')) %>% 
+                 unlist()
+       )  %>% unlist()
+```
+
+
+
+
+```{r}
+single_domain_formula <- paste0(
+  'overconfidence ~ ', domain_columns
+)
+```
+
+
+```{r}
+full_domain_formula <- as.formula(
+  paste0(
+    'overconfidence ~ ', str_flatten(domain_columns, ' + ')
+         )
+  )
 ```
 
