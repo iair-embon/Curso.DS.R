@@ -1,0 +1,52 @@
+---
+title: "Datos a utilizar"
+author: "Iair Embon, Alejandro Ramos Usaj"
+date: '2022-07-18'
+output: html_document
+---
+
+
+Cargo los datos
+```{r}
+load("D:/Windows/Descargas/Git_Metacog_Personalidad/Pubilico/Metacognition.PersonalityTraits/git/Data/df_total_filtered.Rda")
+```
+
+Lo exploro
+```{r}
+str(df_total)
+head(df_total)
+```
+
+Veo la cantidad de participantes
+```{r}
+print(length(unique(df_total$Participant)))
+```
+Exploro la variable de interes (Confianza)
+```{r}
+hist(df_total$confidence_key)
+```
+
+Observo la confianza promedio por participante
+```{r}
+library(tidyverse)
+
+
+df_total%>%
+    select(!c(RelyOn,
+              Problems,
+              ConfKey1,
+              ConfKey2,
+              ConfKey3,
+              ConfKey4,
+              discrimination_is_correct,
+              confidence_key,
+              trials,
+              PointDifference,
+              ReacTime_DiscTask,
+              ReacTime_ConfTask)) %>%
+    distinct(Participant,.keep_all = TRUE) %>%
+    ggplot(aes(1:length(Participant), ConfMean)) +
+    geom_point()
+
+```
+

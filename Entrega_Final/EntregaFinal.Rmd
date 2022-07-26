@@ -108,6 +108,11 @@ d %>%
 
 ```
 
+Preproceso la varible genero
+```{r}
+d$gender <- ifelse(d$gender == "Masculino",1,0)
+```
+
 
 Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
 ```{r}
@@ -135,39 +140,150 @@ model2 <- glm(overconfidence ~ DomainAntagonism +
 summary(model2)
 ```
 
+#Regresion logistica usando metodos de regularizaciones
+
+Corro una regresion logistica para predecir overconfidence usando tres metodos de regularizacion (ridge, lasso, elastic net).
+Las primeras regresiones seran con las facetas, y las segundas seran con los dominios.
+
+Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usaremos leave one out cross validation (LOOCV). Para eso crearemos nuestra propia funcion de LOOCV
+
+Cargo la libreria 
+```{r}
+library(glmnet)
+```
+
+Funcion de LOOCV
+```{r}
+#### 
+
+LOOCV.fun.glmnet <- function(df, alpha.dado){
+  # creo una secuencua de posibles lambdas 
+  posibles_lambdas <- seq(0.01, 20 , length.out = 300)
+  
+  # creo una matriz en donde se van a ir guardando los errores de cada lambda y cada vez que hago LOOCV
+  matriz.errores <- matrix(data=NA,nrow= nrow(df),
+                           ncol= length(posibles_lambdas))
+  
+  for (j in 1:nrow(df)){
+    # datos de entrenamiento (todos menos 1)
+    train <- d.regre.regul.facetas %>%
+      filter(Participant != df$Participant[j])
+    
+    # agarro el dato que quedo para el testeo
+    test  <- anti_join(df, train, by = 'Participant')
+    
+    # Guardo las observaciones de overconfidence en entrenamiento y testeo (para entrenar el modelo y testearlo)
+    y.train <- train$overconfidence
+    y.test <- test$overconfidence
+    
+    # ahora les saco overconfidence y Participant (ya que no tienen que ir como predictores)
+    train <- train %>% select(!c(overconfidence,Participant))
+    test <- test %>% select(!c(overconfidence,Participant))
+    
+    # transformo en matrix
+    train.m <- train %>% data.matrix()
+    test.m <- test %>% data.matrix()
+    
+    # corro el modelo con los datos de entrenamiento
+    modelo <- glmnet(train.m, y.train, family = "binomial",
+                            alpha = alpha.dado , lambda = posibles_lambdas)
+    
+    # hago prediccion sobre la data de testeo
+    probabilities <- modelo %>% predict(newx = test.m, type = "response")
+    predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+    # Model accuracy
+    matriz.errores[j,] <- predicted.classes == y.test
+  }
+  
+  # saco los root mean squared errors para cada lambda
+  lambda.RMSE <- sqrt(((rowSums(matriz.errores))**2)/nrow(df))
+  
+  return(lambda.RMSE)
+  }
+
+  
+  ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
+
+cvfit <- cv.glmnet(train.m, y.train, family = "binomial",
+                          alpha = 0, lambda = posibles_lambdas)
+
+plot(cvfit)
+cvfit$lambda.min
+coef(cvfit, s = "lambda.min")
+
+# no coincide ni en pedo, esta mal mi funcion asumo
+
+```
+
+#Para facetas
+
+Primero saco algunas variables que no van a ser necesarias.
+```{r}
+
+# saco las variables que no me interesan para esta parte de facetas
+d.regre.regul.facetas <- d %>%
+  select(!c(DomainNegativeAffect,
+            DomainDetachment,
+            DomainAntagonism,
+            DomainDisinhibition,
+            DomainPsychoticism,
+            PC,
+            ConfMean,
+            ConfSD,
+            ReacTimeMean_DiscTask,
+            ReacTimeSD_DiscTask,
+            ReacTimeMean_ConfTask,
+            ReacTimeSD_ConfTask,
+            mc,
+            ConfMean.norm))
+
+```
+
+Ridge
+```{r}
+lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
+
+```
+
+Lasso
+```{r}
+lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
+
+```
+
+Elastic net
+```{r}
+lambdaOptimo_facetas_elastic <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
+```
+
 
 # Dominios
 
-Crear un vector llamado `columnas_dominio` que contenga los nombres de las columnas correspondientes a los 5 dominios a evaluar. 
 
 ```{r}
-columnas_dominio <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
+domain_columns <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
 ```
 
-Crear un vector que se llame `mejor_subconjunto` que contenga strings con todas todas las posibles combinaciones de predictores desde un solo predictor hasta el total de predictores. La estructura de cada string debe ser "Var1 + Var2 + Var3 ..." donde "Var1" indica el nombre del primero de los predictores utilizados en ese caso y asi sucesivamente. 
+
 
 ```{r}
-mejor_subconjunto <- sapply(
-  1:5, function(x) combn(columnas_dominio, x, simplify = F) %>% 
+sapply(
+  1:5, function(x) combn(domain_columns, x, simplify = F) %>% 
                  lapply(function(y) str_flatten(y, ' + ')) %>% 
                  unlist()
        )  %>% unlist()
 ```
 
-Armar dos vectores llamados `formula_dominio_simple` y `formula_dominio_completa` que tengan una string con todos los posibles predictores unicos y todos los predictores juntos, respectivamente. En ambos casos se debe concatenar al principio de la string el termino 'overconfidence ~'
+
+
 
 ```{r}
-formula_dominio_simple <- paste0(
-  'overconfidence ~ ', mejor_subconjunto[1:5]
+single_domain_formula <- paste0(
+  'overconfidence ~ ', domain_columns
 )
-
-formula_dominio_completa <- as.formula(
-  paste0(
-    'overconfidence ~ ', mejor_subconjunto[length(mejor_subconjunto)]
-         )
-  )
 ```
 
+<<<<<<< HEAD
 Calcular los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). Para cada caso estimar, usando 10000 muestras bootstrap no parametricas, la media y el intervalo del 95% de confianza para cada coeficiente $\beta$ y guardarlo en un dataframe llamado `bootstrap_dominio`
 
 ```{r}
@@ -245,8 +361,14 @@ spam %>%
   ) + geom_smooth(span = 0.3)
 ```
 Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles y representar en una tablar sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
+=======
+>>>>>>> d98c1159e790986fef696791fa22f74e6b75cfb3
 
 ```{r}
-
+full_domain_formula <- as.formula(
+  paste0(
+    'overconfidence ~ ', str_flatten(domain_columns, ' + ')
+         )
+  )
 ```
 
