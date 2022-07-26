@@ -138,36 +138,82 @@ summary(model2)
 
 # Dominios
 
+Crear un vector llamado `columnas_dominio` que contenga los nombres de las columnas correspondientes a los 5 dominios a evaluar. 
 
 ```{r}
-domain_columns <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
+columnas_dominio <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
 ```
 
-
+Crear un vector que se llame `mejor_subconjunto` que contenga strings con todas todas las posibles combinaciones de predictores desde un solo predictor hasta el total de predictores. La estructura de cada string debe ser "Var1 + Var2 + Var3 ..." donde "Var1" indica el nombre del primero de los predictores utilizados en ese caso y asi sucesivamente. 
 
 ```{r}
-sapply(
-  1:5, function(x) combn(domain_columns, x, simplify = F) %>% 
+mejor_subconjunto <- sapply(
+  1:5, function(x) combn(columnas_dominio, x, simplify = F) %>% 
                  lapply(function(y) str_flatten(y, ' + ')) %>% 
                  unlist()
        )  %>% unlist()
 ```
 
-
-
+Armar dos vectores llamados `formula_dominio_simple` y `formula_dominio_completa` que tengan una string con todos los posibles predictores unicos y todos los predictores juntos, respectivamente. En ambos casos se debe concatenar al principio de la string el termino 'overconfidence ~'
 
 ```{r}
-single_domain_formula <- paste0(
-  'overconfidence ~ ', domain_columns
+formula_dominio_simple <- paste0(
+  'overconfidence ~ ', mejor_subconjunto[1:5]
 )
-```
 
-
-```{r}
-full_domain_formula <- as.formula(
+formula_dominio_completa <- as.formula(
   paste0(
-    'overconfidence ~ ', str_flatten(domain_columns, ' + ')
+    'overconfidence ~ ', mejor_subconjunto[length(mejor_subconjunto)]
          )
   )
+```
+
+Calcular los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). Para cada caso estimar, usando 10000 muestras bootstrap no parametricas, la media y el intervalo del 95% de confianza para cada coeficiente $\beta$ y guardarlo en un dataframe llamado `bootstrap_dominio`
+
+```{r}
+set.seed(1234)
+bootstrap_dominio <- sapply(
+  c(formula_dominio_simple,formula_dominio_completa),
+  function(x) replicate(10,
+  glm(as.formula(x), family = binomial(link = 'logit'),
+      data = slice_sample(d, n =nrow(d), replace = T)
+      )$coeff 
+) %>%
+  apply(
+    1, 
+    FUN = function(x.row) c(media = mean(x.row), 
+                            quantile(x.row, c(0.025,0.975))
+                            )
+    )
+) %>% lapply(as.data.frame) %>% bind_rows() %>%
+  mutate(
+    tipo_modelo = rep(
+      c('simple','completo'), c(3*5,3)
+      )
+         ) %>% 
+  rownames_to_column(var = 'tipo_medicion') %>%
+  mutate(tipo_medicion = str_replace(tipo_medicion, 'media\\d|\\...\\d+','')) %>% 
+  pivot_longer(!starts_with('tipo'), names_to = 'coeficiente', values_to = 'estimacion') %>%
+  drop_na() %>%
+  filter(coeficiente != '(Intercept)') %>%
+  pivot_wider(names_from = tipo_medicion, values_from = estimacion)
+```
+
+Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo indicando con una linea punteada el valor de 0 en el grafico. 
+
+```{r}
+bootstrap_dominio %>%
+  ggplot(
+    aes(x = coeficiente, y = media, color = tipo_modelo, ymin = `2.5%`, ymax = `97.5%`)
+  ) +
+  geom_point(
+    position = position_dodge(.8)
+  ) +
+  geom_errorbar(
+    width = .2,
+    position = position_dodge(.8)
+  ) +
+  geom_hline(yintercept = 0) +
+  coord_flip()
 ```
 
