@@ -90,6 +90,7 @@ d %>%  ## no me estarian saliendo las leyendas, despues reviso
         axis.title.x = element_blank(),
         axis.title.y = element_blank())
 ```
+
 Con esto se puede medir calibracion. Si la media de la confianza esta por encima de 0.72 entonces implica sobreconfianza, y si esta por debajo implica bajaconfianza. 
 
 Agregamos una variable que va a decir si es overconfidence y underconfidence para cada participante. 
@@ -102,13 +103,14 @@ d <- d %>%
 d %>%
   summarise(n= sum(overconfidence))
 # hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
+
+hist(d$ConfMean.norm)
 ```
 
 Preproceso la varible genero
 ```{r}
 d$gender <- ifelse(d$gender == "Masculino",1,0)
 ```
-
 
 Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
 ```{r}
@@ -183,7 +185,7 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
     
     # corro el modelo con los datos de entrenamiento
     modelo <- glmnet(train.m, y.train, family = "binomial",
-                            alpha = alpha.dado , nlambda = 500)
+                            alpha = alpha.dado , lambda = posibles_lambdas)
     
     # hago prediccion sobre la data de testeo
     probabilities <- modelo %>% predict(newx = test.m, type = "response")
@@ -201,12 +203,12 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
   
   ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
 
-cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
-                          alpha = 1)
-
-plot(cvfit)
-cvfit$lambda.min
-coef(cvfit, s = "lambda.min")
+# cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
+#                           alpha = 1)
+# 
+# plot(cvfit)
+# cvfit$lambda.min
+# coef(cvfit, s = "lambda.min")
 
 # no coincide ni en pedo, esta mal mi funcion asumo
 
@@ -248,7 +250,6 @@ Ajusto una regresion penalizacion de tipo Lasoo
 
 ```{r}
 lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
-
 ```
 
 Ajusto una Elastic Net
