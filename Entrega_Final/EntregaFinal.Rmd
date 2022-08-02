@@ -33,7 +33,6 @@ Veo la cantidad de participantes
 print(length(unique(df_total$Participant)))
 ```
 
-
 Exploro la variable de interes (Confianza)
 ```{r}
 hist(df_total$confidence_key)
@@ -41,8 +40,6 @@ hist(df_total$confidence_key)
 
 Convierto el df por trials en un df por participantes
 ```{r}
-library(tidyverse)
-
 d <- df_total %>%
   select(!c(RelyOn,
             Problems,
@@ -93,6 +90,7 @@ d %>%  ## no me estarian saliendo las leyendas, despues reviso
         axis.title.x = element_blank(),
         axis.title.y = element_blank())
 ```
+
 Con esto se puede medir calibracion. Si la media de la confianza esta por encima de 0.72 entonces implica sobreconfianza, y si esta por debajo implica bajaconfianza. 
 
 Agregamos una variable que va a decir si es overconfidence y underconfidence para cada participante. 
@@ -105,13 +103,14 @@ d <- d %>%
 d %>%
   summarise(n= sum(overconfidence))
 # hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
+
+hist(d$ConfMean.norm)
 ```
 
 Preproceso la varible genero
 ```{r}
 d$gender <- ifelse(d$gender == "Masculino",1,0)
 ```
-
 
 Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
 ```{r}
@@ -151,7 +150,8 @@ Cargo la libreria
 library(glmnet)
 ```
 
-Funcion de LOOCV
+Creo una funcion para realizar un LOOCV y elegir asi el valor de lambda optimo.
+
 ```{r}
 #### 
 
@@ -185,7 +185,7 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
     
     # corro el modelo con los datos de entrenamiento
     modelo <- glmnet(train.m, y.train, family = "binomial",
-                            alpha = alpha.dado , nlambda = 500)
+                            alpha = alpha.dado , lambda = posibles_lambdas)
     
     # hago prediccion sobre la data de testeo
     probabilities <- modelo %>% predict(newx = test.m, type = "response")
@@ -203,12 +203,12 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
   
   ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
 
-cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
-                          alpha = 1)
-
-plot(cvfit)
-cvfit$lambda.min
-coef(cvfit, s = "lambda.min")
+# cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
+#                           alpha = 1)
+# 
+# plot(cvfit)
+# cvfit$lambda.min
+# coef(cvfit, s = "lambda.min")
 
 # no coincide ni en pedo, esta mal mi funcion asumo
 
@@ -217,6 +217,7 @@ coef(cvfit, s = "lambda.min")
 #Para facetas
 
 Primero saco algunas variables que no van a ser necesarias.
+
 ```{r}
 
 # saco las variables que no me interesan para esta parte de facetas
@@ -238,19 +239,21 @@ d.regre.regul.facetas <- d %>%
 
 ```
 
-Ridge
+Ajusto una regresion con penalizacion Ridge. 
+
 ```{r, warning=F}
 lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
 lambdaOptimo_facetas_ridge %>% apply(2, mean) %>% plot(type ='l', log = 'x')
 ```
 
-Lasso
+Ajusto una regresion penalizacion de tipo Lasoo
+
 ```{r}
 lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
-
 ```
 
-Elastic net
+Ajusto una Elastic Net
+
 ```{r}
 lambdaOptimo_facetas_elastic <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
 ```
@@ -258,12 +261,13 @@ lambdaOptimo_facetas_elastic <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.da
 
 # Dominios
 
+Armo un vector con los nombres de las columnas que contienen las variables de interes para el caso de los dominios.
 
 ```{r}
 domain_columns <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
 ```
 
-
+Genero un vector con las formulas de todos los posibles modelos que pueden generarse a partir de los 5 dominios a utilizar como covariadas. La cantidad total de modelos posibles es $\sum_{k = 1}^n\frac{n!}{k!(n-k)!}$ que para este caso nos da 31.
 
 ```{r}
 mejor_subconjunto <- sapply(
@@ -276,8 +280,7 @@ mejor_subconjunto <- sapply(
   ) %>% unname()
 ```
 
-
-
+Generamos dos vectores, una que contenga las formulas de un modelo simple (de un solo predictor) y otro que contenga la formula del modelo completo (con todos los predictores).
 
 ```{r}
 formula_dominio_simple <- mejor_subconjunto[1:5]
@@ -389,20 +392,4 @@ resultado_mejor_subconjunto <- expand.grid(1:nrow(d), mejor_subconjunto) %>%
 ```
 
 Representar en una tabla sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
-
-```{r}
-spam_train <- d %>% select(Anhedonia:Withdrawal) %>% data.matrix()
-spam_y_train <- d %>% pull(overconfidence)
-
-
-
-map(
-  1:nrow(spam_train),
-  ~ glmnet(spam_train[-.x, ], spam_y_train[-.x], family = "binomial",
-                            alpha = 0, lambda = seq(0.01, 20,length.out = 100)) %>% 
-    predict(spam_train[.x, ], type = 'response')
-) %>% map(
-  ~ ifelse(.x > 0.5, 1, 0)
-) %>% unlist() %>% matrix(nrow = nrow(spam_train), ncol = 100, byrow = T)
-```
 
