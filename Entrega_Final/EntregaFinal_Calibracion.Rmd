@@ -1,0 +1,420 @@
+---
+title: "TrabajoFinal"
+author: "Alejandro Ramos Usaj, Agostina Sacson y Iair Embon"
+date: '2022-07-25'
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+
+Cargo los datos
+```{r}
+# voy a la carpeta del proyecto
+root <- rprojroot::is_rstudio_project
+basename(getwd())
+
+# load the function to get the df list
+# source(root$find_file("Entrega_Final/df_total_filtered.Rda")) ## me tira un error aca, no se poque lo voy a esta resolviendo
+
+load("./df_total_filtered.Rda")
+```
+
+Lo exploro
+```{r}
+str(df_total)
+```
+
+Veo la cantidad de participantes
+```{r}
+print(length(unique(df_total$Participant)))
+```
+
+Exploro la variable de interes (Confianza)
+```{r}
+hist(df_total$confidence_key)
+```
+```{r}
+lala <- df_total %>%
+  group_by(Participant, confidence_key) %>%
+  summarise(prop_correcta = mean(discrimination_is_correct)) %>%
+  rename(ConfidenceKey = confidence_key)
+  
+lala2 <- df_total %>% 
+  pivot_longer(cols = starts_with("ConfKey")) %>%
+  distinct(Participant, name, .keep_all = TRUE) %>% 
+  select(Participant, name, value) %>% 
+  mutate(ConfidenceKey = as.integer(str_extract(name, "\\d"))) %>%
+  left_join(lala) %>%
+  drop_na() %>%
+  mutate(ConfidenceKey = (ConfidenceKey+2)/6) %>%
+  group_by(Participant) %>%
+  mutate(Conf.norm = value / sum(value)) %>%
+  mutate( preCalibracion = value*(prop_correcta - ConfidenceKey)**2) %>%
+  summarise(Calibracion  = mean(preCalibracion))
+
+ggplot(
+  data = lala2, 
+  aes(x = ConfidenceKey, y = prop_correcta)) + geom_jitter(width = 0.02) + geom_smooth(method = "lm")
+
+ggplot(mapping = aes(lala2$Calibracion, d$ConfMean))+
+  geom_smooth(method = "lm") + geom_point()
+```
+
+Convierto el df por trials en un df por participantes
+```{r}
+d <- df_total %>%
+  select(!c(RelyOn,
+            Problems,
+            ConfKey1,
+            ConfKey2,
+            ConfKey3,
+            ConfKey4,
+            discrimination_is_correct,
+            confidence_key,
+            trials,
+            PointDifference,
+            ReacTime_DiscTask,
+            ReacTime_ConfTask)) %>%
+  distinct(Participant,.keep_all = TRUE)
+```
+
+Exploro la otra variable de interes (metacognicion)
+```{r}
+plot(density(d$mc))
+```
+
+Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
+```{r}
+d %>%  ## no me estarian saliendo las leyendas, despues reviso
+  select(ConfMean,PC,Participant) %>% 
+  # normalizo el promedio de confianza por sujeto para que este en una escala similar a la del desempeno
+  mutate(ConfMean = ConfMean/4, nr = row_number()) %>%
+  arrange(ConfMean) %>%
+  mutate(nr = row_number()) %>%
+  ggplot(aes(x= nr)) +
+  geom_point(aes(y=ConfMean), size = 2, color = "black") +
+  geom_point(aes(y=PC), size = 2, color = "grey")+
+  scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.1))) +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.margin = margin(1, 1,1, 1, "cm"),
+        legend.text =  element_text(size = 25),
+        legend.position = c(0.7, 0.2),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(size = 30),
+        axis.text.y = element_text(size = 30),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+Con esto se puede medir calibracion. Si la media de la confianza esta por encima de 0.72 entonces implica sobreconfianza, y si esta por debajo implica bajaconfianza. 
+
+Agregamos una variable que va a decir si es overconfidence y underconfidence para cada participante. 
+1 si es overconfidence.
+```{r}
+d <- d %>%
+  mutate(Calibracion = ConfMean/4)
+# veo cuantos hay
+d %>%
+  summarise(n= sum(overconfidence))
+# hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
+
+hist(d$ConfMean.norm)
+```
+
+Preproceso la varible genero
+```{r}
+d$gender <- ifelse(d$gender == "Masculino",1,0)
+```
+
+Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
+```{r}
+model <- glm(overconfidence ~ DomainAntagonism + 
+               DomainDetachment +
+               DomainDisinhibition +
+               DomainNegativeAffect + 
+               DomainPsychoticism,
+             family=binomial(link='logit'),
+             data=d)
+summary(model)
+```
+
+Corro otro modelo logistico pero esta vez controlo por edad y genero
+```{r}
+model2 <- glm(overconfidence ~ DomainAntagonism + 
+               DomainDetachment +
+               DomainDisinhibition +
+               DomainNegativeAffect + 
+               DomainPsychoticism +
+               gender +
+               age,
+             family=binomial(link='logit'),
+             data=d)
+summary(model2)
+```
+
+#Regresion logistica usando metodos de regularizaciones
+
+Corro una regresion logistica para predecir overconfidence usando tres metodos de regularizacion (ridge, lasso, elastic net).
+Las primeras regresiones seran con las facetas, y las segundas seran con los dominios.
+
+Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usaremos leave one out cross validation (LOOCV). Para eso crearemos nuestra propia funcion de LOOCV
+
+Cargo la libreria 
+```{r}
+library(glmnet)
+```
+
+Creo una funcion para realizar un LOOCV y elegir asi el valor de lambda optimo.
+
+```{r}
+#### 
+
+LOOCV.fun.glmnet <- function(df, alpha.dado){
+  # creo una secuencua de posibles lambdas 
+  posibles_lambdas <- seq(0.0000001, 0.01, length.out = 1000)
+  
+  # creo una matriz en donde se van a ir guardando los errores de cada lambda y cada vez que hago LOOCV
+  matriz.errores <- matrix(data=NA,nrow= nrow(df),
+                           ncol= length(posibles_lambdas))
+  
+  for (j in 1:nrow(df)){
+    # datos de entrenamiento (todos menos 1)
+    train <- d.regre.regul.facetas %>%
+      filter(Participant != df$Participant[j])
+    
+    # agarro el dato que quedo para el testeo
+    test  <- anti_join(df, train, by = 'Participant')
+    
+    # Guardo las observaciones de overconfidence en entrenamiento y testeo (para entrenar el modelo y testearlo)
+    y.train <- train$overconfidence
+    y.test <- test$overconfidence
+    
+    # ahora les saco overconfidence y Participant (ya que no tienen que ir como predictores)
+    train <- train %>% select(!c(overconfidence,Participant))
+    test <- test %>% select(!c(overconfidence,Participant))
+    
+    # transformo en matrix
+    train.m <- train %>% data.matrix()
+    test.m <- test %>% data.matrix()
+    
+    # corro el modelo con los datos de entrenamiento
+    modelo <- glmnet(train.m, y.train, family = "binomial",
+                            alpha = alpha.dado , lambda = posibles_lambdas)
+    
+    # hago prediccion sobre la data de testeo
+    probabilities <- modelo %>% predict(newx = test.m, type = "response")
+    predicted.classes <- ifelse(probabilities > 0.5, 1, 0)
+    # Model accuracy
+    matriz.errores[j,] <- predicted.classes == y.test
+  }
+  
+  # saco los root mean squared errors para cada lambda
+  lambda.RMSE <- sqrt(((rowSums(matriz.errores))**2)/nrow(df))
+  
+  return(matriz.errores)
+  }
+
+  
+  ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
+
+# cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
+#                           alpha = 1)
+# 
+# plot(cvfit)
+# cvfit$lambda.min
+# coef(cvfit, s = "lambda.min")
+
+# no coincide ni en pedo, esta mal mi funcion asumo
+
+```
+
+#Para facetas
+
+Primero saco algunas variables que no van a ser necesarias.
+
+```{r}
+
+# saco las variables que no me interesan para esta parte de facetas
+d.regre.regul.facetas <- d %>%
+  select(!c(DomainNegativeAffect,
+            DomainDetachment,
+            DomainAntagonism,
+            DomainDisinhibition,
+            DomainPsychoticism,
+            PC,
+            ConfMean,
+            ConfSD,
+            ReacTimeMean_DiscTask,
+            ReacTimeSD_DiscTask,
+            ReacTimeMean_ConfTask,
+            ReacTimeSD_ConfTask,
+            mc,
+            ConfMean.norm))
+
+```
+
+Ajusto una regresion con penalizacion Ridge. 
+
+```{r, warning=F}
+lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
+lambdaOptimo_facetas_ridge %>% apply(2, mean) %>% plot(type ='l', log = 'x')
+```
+
+Ajusto una regresion penalizacion de tipo Lasoo
+
+```{r}
+lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
+```
+
+Ajusto una Elastic Net
+
+```{r}
+lambdaOptimo_facetas_elastic <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
+```
+
+
+# Dominios
+
+Armo un vector con los nombres de las columnas que contienen las variables de interes para el caso de los dominios.
+
+```{r}
+domain_columns <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
+```
+
+Genero un vector con las formulas de todos los posibles modelos que pueden generarse a partir de los 5 dominios a utilizar como covariadas. La cantidad total de modelos posibles es $\sum_{k = 1}^n\frac{n!}{k!(n-k)!}$ que para este caso nos da 31.
+
+```{r}
+mejor_subconjunto <- sapply(
+  1:5, function(x) combn(domain_columns, x, simplify = F) %>% 
+                 lapply(function(y) str_flatten(y, ' + ')) %>% 
+                 unlist()
+       )  %>% unlist() %>%
+  sapply(
+    function(x) paste0('overconfidence ~ ', x) 
+  ) %>% unname()
+```
+
+Generamos dos vectores, una que contenga las formulas de un modelo simple (de un solo predictor) y otro que contenga la formula del modelo completo (con todos los predictores).
+
+```{r}
+formula_dominio_simple <- mejor_subconjunto[1:5]
+formula_dominio_completa <- mejor_subconjunto[length(mejor_subconjunto)]
+```
+
+Calcular los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). Para cada caso estimar, usando 10000 muestras bootstrap no parametricas, la media y el intervalo del 95% de confianza para cada coeficiente $\beta$ y guardarlo en un dataframe llamado `bootstrap_dominio`
+
+```{r}
+set.seed(1234)
+bootstrap_dominio <- sapply(
+  c(formula_dominio_simple,formula_dominio_completa),
+  function(x) replicate(10,
+  glm(as.formula(x), family = binomial(link = 'logit'),
+      data = slice_sample(d, n =nrow(d), replace = T)
+      )$coeff 
+) %>%
+  apply(
+    1, 
+    FUN = function(x.row) c(media = mean(x.row), 
+                            quantile(x.row, c(0.025,0.975))
+                            )
+    )
+) %>% lapply(as.data.frame) %>% bind_rows() %>%
+  mutate(
+    tipo_modelo = rep(
+      c('simple','completo'), c(3*5,3)
+      )
+         ) %>% 
+  rownames_to_column(var = 'tipo_medicion') %>%
+  mutate(tipo_medicion = str_replace(tipo_medicion, 'media\\d|\\...\\d+','')) %>% 
+  pivot_longer(!starts_with('tipo'), names_to = 'coeficiente', values_to = 'estimacion') %>%
+  drop_na() %>%
+  filter(coeficiente != '(Intercept)') %>%
+  pivot_wider(names_from = tipo_medicion, values_from = estimacion)
+```
+
+Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
+
+```{r}
+bootstrap_dominio %>%
+  ggplot(
+    aes(x = coeficiente, y = media, color = tipo_modelo, ymin = `2.5%`, ymax = `97.5%`)
+  ) +
+  geom_point(
+    position = position_dodge(.8)
+  ) +
+  geom_errorbar(
+    width = .2,
+    position = position_dodge(.8)
+  ) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  ylab('Estimacion') + xlab('Coeficientes') +
+  scale_color_discrete('Tipo de Modelo', labels = c('Multiple', 'Simple'))
+```
+
+Interpretar los resultados
+
+Evaluar un ajuste polinomial para la regresion logistica generando una grilla de posibles valores para el grado del polinomio que vaya de 1 a 15 (con intervalos de 1) y ajustar el modelo usando la funcion `poly`. Para cada grado posible del polinomio utilizar un procedimiento leave-one-out para calcular el accuracy y elegir asi el grado optimo del polinomio a utilizar.
+
+```{r, warning=FALSE}
+grilla_grado <- expand.grid(indice = 1:nrow(d), grado = 1:15)
+
+spam <- grilla_grado %>% mutate(
+  probabilidad = grilla_grado %>% 
+    pmap(
+      ~ glm(overconfidence ~ poly(DomainDisinhibition, .y), family = binomial(link = 'logit'),
+            data = d[-.x, ]
+            ) %>% 
+        predict(d[.x, ], type = 'response')
+      ) %>% 
+    unlist(),
+  prediccion = ifelse(probabilidad > 0.5, 1, 0),
+  acierto = prediccion == d[indice, 'overconfidence']
+  ) %>% group_by(grado) %>% summarise(accuracy = mean(acierto))
+
+spam %>%
+  ggplot(
+    aes(x = grado, y = accuracy)
+  ) + geom_smooth(span = 0.3) +
+  geom_hline(
+    yintercept = d %>% count(overconfidence) %>% mutate(n = n/sum(n)) %>% pull(n) %>% max(),
+    linetype = 'dashed'
+  )
+```
+
+Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles.
+
+```{r}
+predicciones_mejor_subconjunto <- pmap(
+  expand.grid(1:nrow(d), mejor_subconjunto) %>% mutate(Var2 = as.character(Var2)),
+  ~ glm(
+      as.formula(.y), family = binomial(link = 'logit'), data = d, subset = -.x
+    ) %>% predict(d[.x, ], type = 'response')
+) %>%
+  unlist()
+
+resultado_mejor_subconjunto <- expand.grid(1:nrow(d), mejor_subconjunto) %>%
+  mutate(pred = predicciones_mejor_subconjunto,
+         respuesta = ifelse(pred > 0.5, 1, 0),
+         acierto = as.numeric(respuesta == d[Var1, 'overconfidence'])) %>%
+  ggplot(
+  aes(x = Var2, y = acierto)
+) +
+  stat_summary(geom = 'pointrange') +
+  coord_flip() +
+  theme(axis.text.y = element_text(size = 5))
+```
+
+Representar en una tabla sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
+
