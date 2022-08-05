@@ -1,5 +1,5 @@
 ---
-title: "TrabajoFinal"
+title: "TrabajoFinal_Genero"
 author: "Alejandro Ramos Usaj, Agostina Sacson y Iair Embon"
 date: '2022-07-25'
 output: html_document
@@ -9,8 +9,6 @@ output: html_document
 library(tidyverse)
 library(glmnet)
 ```
-
-
 
 Cargo los datos
 ```{r}
@@ -24,96 +22,13 @@ basename(getwd())
 load("./df_total_filtered.Rda")
 ```
 
-Lo exploro
-```{r}
-str(df_total)
-```
-
-Veo la cantidad de participantes
-```{r}
-print(length(unique(df_total$Participant)))
-```
-
-Exploro la variable de interes (Confianza)
-```{r}
-hist(df_total$confidence_key)
-```
-
-Convierto el df por trials en un df por participantes
-```{r}
-d <- df_total %>%
-  select(!c(RelyOn,
-            Problems,
-            ConfKey1,
-            ConfKey2,
-            ConfKey3,
-            ConfKey4,
-            discrimination_is_correct,
-            confidence_key,
-            trials,
-            PointDifference,
-            ReacTime_DiscTask,
-            ReacTime_ConfTask)) %>%
-  distinct(Participant,.keep_all = TRUE)
-```
-
-Exploro la otra variable de interes (metacognicion)
-```{r}
-plot(density(d$mc))
-```
-
-Exploro la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. 
-```{r}
-d %>%  ## no me estarian saliendo las leyendas, despues reviso
-  select(ConfMean,PC,Participant) %>% 
-  # normalizo el promedio de confianza por sujeto para que este en una escala similar a la del desempeno
-  mutate(ConfMean = ConfMean/4, nr = row_number()) %>%
-  arrange(ConfMean) %>%
-  mutate(nr = row_number()) %>%
-  ggplot(aes(x= nr)) +
-  geom_point(aes(y=ConfMean), size = 2, color = "black") +
-  geom_point(aes(y=PC), size = 2, color = "grey")+
-  scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
-  scale_y_continuous(expand = expansion(mult = c(0.01, 0.1))) +
-  theme(axis.line = element_line(colour = "black"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        plot.margin = margin(1, 1,1, 1, "cm"),
-        legend.text =  element_text(size = 25),
-        legend.position = c(0.7, 0.2),
-        legend.background = element_blank(),
-        legend.key = element_blank(),
-        legend.title = element_blank(),
-        panel.background = element_blank(),
-        axis.text.x = element_text(size = 30),
-        axis.text.y = element_text(size = 30),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank())
-```
-
-Con esto se puede medir calibracion. Si la media de la confianza esta por encima de 0.72 entonces implica sobreconfianza, y si esta por debajo implica bajaconfianza. 
-
-Agregamos una variable que va a decir si es overconfidence y underconfidence para cada participante. 
-1 si es overconfidence.
-```{r}
-d <- d %>%
-  mutate(ConfMean.norm = ConfMean/4, 
-         overconfidence = ifelse(ConfMean.norm > 0.72, 1, 0))
-# veo cuantos hay
-d %>%
-  summarise(n= sum(overconfidence))
-# hay 81 participantes con alta confianza, lo que nos da 143 con baja confianza
-
-hist(d$ConfMean.norm)
-```
-
 Preproceso la varible genero
 ```{r}
 d$gender <- ifelse(d$gender == "Masculino",1,0)
 ```
 
-Corremos una regresion logistica para predecir underconfidence y overconfidence con los dominios de los rasgos disfuncionales de la personalidad
+Corremos una regresion logistica para predecir genero con los dominios de los rasgos disfuncionales de la personalidad
+
 ```{r}
 model <- glm(gender ~ DomainAntagonism + 
                DomainDetachment +
@@ -125,7 +40,7 @@ model <- glm(gender ~ DomainAntagonism +
 summary(model)
 ```
 
-Corro otro modelo logistico pero esta vez controlo por edad y genero
+Corro otro modelo logistico pero esta vez controlo por edad
 ```{r}
 model2 <- glm(gender ~ DomainAntagonism + 
                DomainDetachment +
@@ -140,7 +55,7 @@ summary(model2)
 
 #Regresion logistica usando metodos de regularizaciones
 
-Corro una regresion logistica para predecir overconfidence usando tres metodos de regularizacion (ridge, lasso, elastic net).
+Corro una regresion logistica para predecir genero usando tres metodos de regularizacion (ridge, lasso, elastic net).
 Las primeras regresiones seran con las facetas, y las segundas seran con los dominios.
 
 Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usaremos leave one out cross validation (LOOCV). Para eso crearemos nuestra propia funcion de LOOCV
@@ -156,8 +71,21 @@ Creo una funcion para realizar un LOOCV y elegir asi el valor de lambda optimo.
 #### 
 
 LOOCV.fun.glmnet <- function(df, alpha.dado){
-  # creo una secuencua de posibles lambdas 
-  posibles_lambdas <- seq(0.0000001, 0.01, length.out = 1000)
+  ### Primero creo una secuencua de posibles lambdas, desde un modelo desechable
+  
+  # Guardo las observaciones de genero
+  y <- df$gender
+
+  # ahora les saco genero y Participant (ya que no tienen que ir como predictores)
+  df.lambda <- df %>% select(!c(gender,Participant))
+
+  # transformo en matrix
+  df.lambda.m <- df.lambda %>% data.matrix()
+
+  # Corro el modelo y obtengo el lambda
+  modelo.lambda <- glmnet(df.lambda.m, y , family = "binomial",
+                            alpha = alpha.dado)
+  posibles_lambdas <- modelo.lambda$lambda
   
   # creo una matriz en donde se van a ir guardando los errores de cada lambda y cada vez que hago LOOCV
   matriz.errores <- matrix(data=NA,nrow= nrow(df),
@@ -165,17 +93,17 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
   
   for (j in 1:nrow(df)){
     # datos de entrenamiento (todos menos 1)
-    train <- d.regre.regul.facetas %>%
+    train <- df %>%
       filter(Participant != df$Participant[j])
     
     # agarro el dato que quedo para el testeo
     test  <- anti_join(df, train, by = 'Participant')
     
-    # Guardo las observaciones de overconfidence en entrenamiento y testeo (para entrenar el modelo y testearlo)
+    # Guardo las observaciones de genero en entrenamiento y testeo (para entrenar el modelo y testearlo)
     y.train <- train$gender
     y.test <- test$gender
     
-    # ahora les saco overconfidence y Participant (ya que no tienen que ir como predictores)
+    # ahora les saco genero y Participant (ya que no tienen que ir como predictores)
     train <- train %>% select(!c(gender,Participant))
     test <- test %>% select(!c(gender,Participant))
     
@@ -185,7 +113,7 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
     
     # corro el modelo con los datos de entrenamiento
     modelo <- glmnet(train.m, y.train, family = "binomial",
-                            alpha = alpha.dado , lambda = posibles_lambdas)
+                            alpha = alpha.dado, lambda = posibles_lambdas)
     
     # hago prediccion sobre la data de testeo
     probabilities <- modelo %>% predict(newx = test.m, type = "response")
@@ -194,10 +122,13 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
     matriz.errores[j,] <- predicted.classes == y.test
   }
   
-  # saco los root mean squared errors para cada lambda
+  # saco los root mean squared errors para cada lambda (en principio, solo vamos a usar accuracy)
   # lambda.RMSE <- sqrt(((rowSums(matriz.errores))**2)/nrow(df))
   
-  return(matriz.errores)
+  list_return <- list("matriz.errores" = matriz.errores,
+                      "lambdas" = posibles_lambdas)
+  
+  return(list_return)
   }
 
   
@@ -244,19 +175,96 @@ Ajusto una regresion con penalizacion Ridge.
 
 ```{r, warning=F}
 lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
-lambdaOptimo_facetas_ridge %>% apply(2, mean) %>% plot(type ='l', log = 'x')
+
+# lo ploteo
+matriz.errores <- lambdaOptimo_facetas_ridge$matriz.errores
+matriz.errores %>% apply(2, mean) %>% plot(type ='l', log = 'x')
+
+# saco la proporcion de aciertos
+accuracy_lambdas <- colMeans(matriz.errores)
+
+# tomo el lambda que tiene mayor porporcion de aciertos
+index.lambda <- which.max(accuracy_lambdas)
+lambda.optimo <- lambdaOptimo_facetas_ridge$lambdas[index.lambda]
+
+### corro la regresion con el lambda optimo
+y <- d.regre.regul.facetas$gender
+
+# ahora les saco genero y Participant (ya que no tienen que ir como predictores)
+d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(gender,Participant))
+
+# transformo en matrix
+d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
+
+# Corro el modelo y obtengo el lambda
+modelo.facetas_ridge <- glmnet(d.regre.regul.facetas.prepro.m, y , family = "binomial",
+                            alpha = 0, lambda = lambda.optimo)
+
+coef(modelo.facetas_ridge)
 ```
 
 Ajusto una regresion penalizacion de tipo Lasoo
 
 ```{r}
 lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
+
+# lo ploteo
+matriz.errores <- lambdaOptimo_facetas_lasso$matriz.errores
+matriz.errores %>% apply(2, mean) %>% plot(type ='l', log = 'x')
+
+# saco la proporcion de aciertos
+accuracy_lambdas <- colMeans(matriz.errores)
+
+# tomo el lambda que tiene mayor porporcion de aciertos
+index.lambda <- which.max(accuracy_lambdas)
+lambda.optimo <- lambdaOptimo_facetas_lasso$lambdas[index.lambda]
+
+### corro la regresion con el lambda optimo
+y <- d.regre.regul.facetas$gender
+
+# ahora les saco genero y Participant (ya que no tienen que ir como predictores)
+d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(gender,Participant))
+
+# transformo en matrix
+d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
+
+# Corro el modelo y obtengo el lambda
+modelo.facetas_lasso <- glmnet(d.regre.regul.facetas.prepro.m, y , family = "binomial",
+                            alpha = 1, lambda = lambda.optimo)
+
+coef(modelo.facetas_lasso)
 ```
 
 Ajusto una Elastic Net
 
 ```{r}
-lambdaOptimo_facetas_elastic <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
+lambdaOptimo_facetas_elasticNet <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
+
+# lo ploteo
+matriz.errores <- lambdaOptimo_facetas_elasticNet$matriz.errores
+matriz.errores %>% apply(2, mean) %>% plot(type ='l', log = 'x')
+
+# saco la proporcion de aciertos
+accuracy_lambdas <- colMeans(matriz.errores)
+
+# tomo el lambda que tiene mayor porporcion de aciertos
+index.lambda <- which.max(accuracy_lambdas)
+lambda.optimo <- lambdaOptimo_facetas_elasticNet$lambdas[index.lambda]
+
+### corro la regresion con el lambda optimo
+y <- d.regre.regul.facetas$gender
+
+# ahora les saco genero y Participant (ya que no tienen que ir como predictores)
+d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(gender,Participant))
+
+# transformo en matrix
+d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
+
+# Corro el modelo y obtengo el lambda
+modelo.facetas_elasticNet <- glmnet(d.regre.regul.facetas.prepro.m, y , family = "binomial",
+                            alpha = 0.5, lambda = lambda.optimo)
+
+coef(modelo.facetas_elasticNet)
 ```
 
 
