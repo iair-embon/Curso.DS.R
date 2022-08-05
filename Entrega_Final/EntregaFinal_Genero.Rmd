@@ -17,8 +17,6 @@ root <- rprojroot::is_rstudio_project
 basename(getwd())
 
 # load the function to get the df list
-# source(root$find_file("Entrega_Final/df_total_filtered.Rda")) ## me tira un error aca, no se poque lo voy a esta resolviendo
-
 load("./df_total_filtered.Rda")
 ```
 
@@ -55,15 +53,8 @@ summary(model2)
 
 #Regresion logistica usando metodos de regularizaciones
 
-Corro una regresion logistica para predecir genero usando tres metodos de regularizacion (ridge, lasso, elastic net).
-Las primeras regresiones seran con las facetas, y las segundas seran con los dominios.
-
+Corro una regresion logistica para predecir genero usando tres metodos de regularizacion (ridge, lasso, elastic net), para predecir facetas.
 Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usaremos leave one out cross validation (LOOCV). Para eso crearemos nuestra propia funcion de LOOCV
-
-Cargo la libreria 
-```{r}
-library(glmnet)
-```
 
 Creo una funcion para realizar un LOOCV y elegir asi el valor de lambda optimo.
 
@@ -129,19 +120,7 @@ LOOCV.fun.glmnet <- function(df, alpha.dado){
                       "lambdas" = posibles_lambdas)
   
   return(list_return)
-  }
-
-  
-  ###### me da rarisimo, pruebo si el modelo esta mal o mi funcion esta mal usando funciones de cv, para j <- 1
-
-# cvfit <- cv.glmnet(spam_train, spam_y_train, family = "binomial",
-#                           alpha = 1)
-# 
-# plot(cvfit)
-# cvfit$lambda.min
-# coef(cvfit, s = "lambda.min")
-
-# no coincide ni en pedo, esta mal mi funcion asumo
+}
 
 ```
 
@@ -203,7 +182,7 @@ modelo.facetas_ridge <- glmnet(d.regre.regul.facetas.prepro.m, y , family = "bin
 coef(modelo.facetas_ridge)
 ```
 
-Ajusto una regresion penalizacion de tipo Lasoo
+Ajusto una regresion penalizacion de tipo Lasso
 
 ```{r}
 lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
