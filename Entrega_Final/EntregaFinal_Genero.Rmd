@@ -316,12 +316,6 @@ coef(modelo.facetas_elasticNet)
 
 # Dominios
 
-X.1. Armar un vector llamado `columnas_de_dominio` con los nombres de las columnas que contienen las variables de interes para el caso de los dominios.
-
-```{r}
-columnas_de_dominio <- colnames(d)[str_detect(colnames(d), pattern = 'Domain')]
-```
-
 X.2. Generar un vector llamado `mejor_subconjunto` que contenga las formulas (como strings) de todos los posibles modelos que pueden generarse a partir de los 5 dominios a utilizar como covariadas. Las formulas tienen que ser strings que contenga la variable `gender` como variable de respuesta y los dominions como variables predictoras. 
 La cantidad total de modelos posibles de manera general es $\sum_{k = 1}^n\frac{n!}{k!(n-k)!}$ que para este caso nos da 31 por lo que debemos obtener un vector con longitud 31. 
 
@@ -348,7 +342,7 @@ X.4. Generar una funcion llamada `bootstrap_logistico` que dada una string denom
 ```{r}
 bootstrap_logistico <- function(formula_string) {
   replicate(10000,
-  lm(as.formula(formula_string), family = binomial(link = 'logit'),
+  glm(as.formula(formula_string), family = binomial(link = 'logit'),
       data = slice_sample(d, n =nrow(d), replace = T)
       )$coeff
   ) %>%
