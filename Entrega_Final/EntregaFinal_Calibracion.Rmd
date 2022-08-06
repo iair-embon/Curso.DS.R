@@ -320,7 +320,7 @@ formula_dominio_completa <- mejor_subconjunto[length(mejor_subconjunto)]
 X.4. Generar una funcion llamada `bootstrap_logistico` que dada una string denominada `formula_string`, correspondiente a la formula de un modelo de regresion logistica, calcule la media, el percentil 2.5 y el percentil 97.5 de la distribucion bootstrap para los parametros de la regresion logistica utilizando la funcion `quantile` para los percentiles y usando el metodo de Bootstrap no parametrico con 10 mil repeticiones.
 
 ```{r}
-bootstrap_logistico <- function(formula_string) {
+bootstrap_lineal <- function(formula_string) {
   replicate(10000,
   lm(as.formula(formula_string),
       data = slice_sample(d, n =nrow(d), replace = T)
@@ -341,7 +341,7 @@ x.5. Utilizando los vectores `formula_dominio_simple` y `formula_dominio_complet
 set.seed(1234)
 bootstrap_dominio <- sapply(
   c(formula_dominio_simple,formula_dominio_completa),
-  bootstrap_logistico 
+  bootstrap_lineal 
   ) %>% lapply(as.data.frame) %>% bind_rows() %>%
   mutate(
     tipo_modelo = rep(
