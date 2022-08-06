@@ -221,90 +221,72 @@ d.regre.regul.facetas <- d %>%
             gender))
 ```
 
-Ajusto una regresion con penalizacion Ridge. 
-
-```{r, warning=F}
-lambdaOptimo_facetas_ridge <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0)
-
-# lo ploteo 
-plot(lambdaOptimo_facetas_ridge$lambda.RMSE,type ='l', log = 'x')
-
-# tomo el lambda que tiene el menor error
-index.lambda <- which.min(lambdaOptimo_facetas_ridge$lambda.RMSE)
-lambda.optimo <- lambdaOptimo_facetas_ridge$lambdas[index.lambda]
-
-### corro la regresion con el lambda optimo
-y <- d.regre.regul.facetas$Calibracion
-
-# ahora les saco genero y Participant (ya que no tienen que ir como predictores)
-d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(Calibracion,Participant))
-
-# transformo en matrix
-d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
-
-# Corro el modelo y obtengo el lambda
-modelo.facetas_ridge <- glmnet(d.regre.regul.facetas.prepro.m, y,
-                            alpha = 0, lambda = lambda.optimo)
-
-coef(modelo.facetas_ridge)
-```
-
-Ajusto una regresion penalizacion de tipo Lasso
+Creo una funcion que tome la funcion que elige el lambda optimo y que lo use en una regresion con un determindo alpha optimizado 
 
 ```{r}
-lambdaOptimo_facetas_lasso <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 1)
+opt_alpha_lambda <- function(df){
+  
+  # Creo los vectores que van a contener todos los lambdas, alphas y sus respectivos RMSE
+  alphas.usados <- c()
+  lambdas.usados <- c()
+  RMSE <- c()
+  
+  # creo los alphas que vamos a usar
+  muchos.alphas <- seq(0,1, by = 0.1)
+  
+  # itero por varios alphas
+  for (i in 1:length(muchos.alphas)) {
+    alpha.dado <- muchos.alphas[i]
+    
+    # Hago LOOCV para elegir varios lambdas
+    lambdaOptimo_facetas <- LOOCV.fun.glmnet(df, alpha.dado)
+    
+    RMSE <- c(RMSE, lambdaOptimo_facetas$lambda.RMSE)
+    alphas.usados <- c(alphas.usados, rep(alpha.dado,length(lambdaOptimo_facetas$lambda.RMSE)))
+    lambdas.usados <- c(lambdas.usados,lambdaOptimo_facetas$lambdas)
+  }
+  
+  df_alp_lambd_RMSE <- data.frame(alpha = alphas.usados,
+                                  lambda = lambdas.usados,
+                                  RMSE = RMSE)
+    
+  return(df_alp_lambd_RMSE)
+}
 
-# lo ploteo 
-plot(lambdaOptimo_facetas_lasso$lambda.RMSE,type ='l', log = 'x')
+opt_alpha_lambda.df <- opt_alpha_lambda(d.regre.regul.facetas)
 
 # tomo el lambda que tiene el menor error
-index.lambda <- which.min(lambdaOptimo_facetas_lasso$lambda.RMSE)
-lambda.optimo <- lambdaOptimo_facetas_lasso$lambdas[index.lambda]
+index.opt.param <- which.min(opt_alpha_lambda.df$RMSE)
+  
+# Corro el modelo con el alpha optimo y el lambda que minimiza el error
+lambda.optimo <- opt_alpha_lambda.df$lambda[index.opt.param]
+alpha.optimo <- opt_alpha_lambda.df$alpha[index.opt.param]  
 
 ### corro la regresion con el lambda optimo
 y <- d.regre.regul.facetas$Calibracion
-
+  
 # ahora les saco genero y Participant (ya que no tienen que ir como predictores)
 d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(Calibracion,Participant))
-
+  
 # transformo en matrix
 d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
 
 # Corro el modelo y obtengo el lambda
-modelo.facetas_lasso <- glmnet(d.regre.regul.facetas.prepro.m, y,
-                            alpha = 1, lambda = lambda.optimo)
+modelo.facetas <- glmnet(d.regre.regul.facetas.prepro.m, y,
+                          alpha = alpha.optimo, lambda = lambda.optimo)
 
-coef(modelo.facetas_lasso)
+# me fijo el lambda optimo que me elije el modelo por si solo usando funciones de la libreria, para alpha = alpha.optimo
+modelo.facetas2 <- glmnet(d.regre.regul.facetas.prepro.m, y,
+                          alpha = alpha.optimo)
+coef(modelo.facetas2)
+plot(modelo.facetas2)
+plot(modelo.facetas2, xvar = "dev", label = TRUE)
+plot(modelo.facetas2, xvar = "lambda", label = TRUE)
+set.seed(1010)
+cvfit <- cv.glmnet(d.regre.regul.facetas.prepro.m,y, type.measure = "mse", nfolds = nrow(d.regre.regul.facetas))
+cvfit$lambda.min
+coef(cvfit, s = "lambda.min")
 ```
-
-Ajusto una Elastic Net
-
-```{r}
-lambdaOptimo_facetas_ElasticNet <- LOOCV.fun.glmnet(d.regre.regul.facetas, alpha.dado = 0.5)
-
-# lo ploteo 
-plot(lambdaOptimo_facetas_ElasticNet$lambda.RMSE,type ='l', log = 'x')
-
-# tomo el lambda que tiene el menor error
-index.lambda <- which.min(lambdaOptimo_facetas_ElasticNet$lambda.RMSE)
-lambda.optimo <- lambdaOptimo_facetas_ElasticNet$lambdas[index.lambda]
-
-### corro la regresion con el lambda optimo
-y <- d.regre.regul.facetas$Calibracion
-
-# ahora les saco genero y Participant (ya que no tienen que ir como predictores)
-d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(Calibracion,Participant))
-
-# transformo en matrix
-d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
-
-# Corro el modelo y obtengo el lambda
-modelo.facetas_ElasticNet <- glmnet(d.regre.regul.facetas.prepro.m, y,
-                            alpha = 0.5, lambda = lambda.optimo)
-
-coef(modelo.facetas_ElasticNet)
-```
-
 
 # Dominios
 
