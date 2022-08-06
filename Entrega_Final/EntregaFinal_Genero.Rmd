@@ -20,6 +20,25 @@ basename(getwd())
 load("./df_total_filtered.Rda")
 ```
 
+Convierto el df por trials en un df por participantes
+```{r}
+d <- df_total %>%
+  select(!c(RelyOn,
+            Problems,
+            ConfKey1,
+            ConfKey2,
+            ConfKey3,
+            ConfKey4,
+            discrimination_is_correct,
+            confidence_key,
+            trials,
+            PointDifference,
+            ReacTime_DiscTask,
+            ReacTime_ConfTask)) %>%
+  distinct(Participant,.keep_all = TRUE)
+```
+
+
 Preproceso la varible genero
 ```{r}
 d$gender <- ifelse(d$gender == "Masculino",1,0)
@@ -144,11 +163,83 @@ d.regre.regul.facetas <- d %>%
             ReacTimeSD_DiscTask,
             ReacTimeMean_ConfTask,
             ReacTimeSD_ConfTask,
-            mc,
-            ConfMean.norm,
-            overconfidence))
+            mc))
 
 ```
+
+
+Creo una funcion que tome la funcion que elige el lambda optimo y que lo use en una regresion con un determindo alpha optimizado
+
+```{r}
+opt_alpha_lambda <- function(df){
+  
+  # Creo los vectores que van a contener todos los lambdas, alphas y sus respectivos accuracy
+  alphas.usados <- c()
+  lambdas.usados <- c()
+  accuracy <- c()
+  
+  # creo los alphas que vamos a usar
+  muchos.alphas <- seq(0,1, by = 0.1)
+  
+  # itero por varios alphas
+  for (i in 1:length(muchos.alphas)) {
+    alpha.dado <- muchos.alphas[i]
+    
+    # Hago LOOCV para elegir varios lambdas
+    lambdaOptimo_facetas <- LOOCV.fun.glmnet(df, alpha.dado)
+    
+    matriz.errores <- lambdaOptimo_facetas$matriz.errores
+    # saco la proporcion de aciertos
+    accuracy <- c(accuracy, colMeans(matriz.errores))
+    lambdas.usados <- c(lambdas.usados,lambdaOptimo_facetas$lambdas)
+    alphas.usados <- c(alphas.usados, rep(alpha.dado, length(lambdaOptimo_facetas$lambdas)))
+  }
+  
+  df_alp_lambd_accuracy <- data.frame(alpha = alphas.usados,
+                                  lambda = lambdas.usados,
+                                  accuracy = accuracy)
+    
+  return(df_alp_lambd_accuracy)
+}
+
+opt_alpha_lambda.df <- opt_alpha_lambda(d.regre.regul.facetas)
+
+# tomo el lambda que tiene el menor error
+index.opt.param <- which.min(opt_alpha_lambda.df$accuracy)
+  
+# Corro el modelo con el alpha optimo y el lambda que minimiza el error
+lambda.optimo <- opt_alpha_lambda.df$lambda[index.opt.param]
+alpha.optimo <- opt_alpha_lambda.df$alpha[index.opt.param]  
+
+### corro la regresion con el lambda optimo
+y <- d.regre.regul.facetas$gender
+  
+# ahora les saco genero y Participant (ya que no tienen que ir como predictores)
+d.regre.regul.facetas.prepro <- d.regre.regul.facetas %>% select(!c(gender,Participant))
+  
+# transformo en matrix
+d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
+
+# Corro el modelo y obtengo el lambda
+modelo.facetas <- glmnet(d.regre.regul.facetas.prepro.m, y,
+                          family = "binomial",
+                          alpha = alpha.optimo, lambda = lambda.optimo)
+
+coef(modelo.facetas)
+# me fijo el lambda optimo que me elije el modelo por si solo usando funciones de la libreria, para alpha = 1
+modelo.facetas2 <- glmnet(d.regre.regul.facetas.prepro.m, y,
+                           family = "binomial",
+                           alpha = 0.1)
+coef(modelo.facetas2)
+plot(modelo.facetas2)
+plot(modelo.facetas2, xvar = "dev", label = TRUE)
+plot(modelo.facetas2, xvar = "lambda", label = TRUE)
+set.seed(1010)
+cvfit <- cv.glmnet(d.regre.regul.facetas.prepro.m,y, type.measure = "auc", nfolds = nrow(d.regre.regul.facetas))
+cvfit$lambda.min
+coef(cvfit, s = "lambda.min")
+```
+
 
 Ajusto una regresion con penalizacion Ridge. 
 
