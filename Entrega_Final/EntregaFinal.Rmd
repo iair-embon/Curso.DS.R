@@ -126,6 +126,38 @@ summary(model2)
 
 A.5) Observa si hay altos niveles de correlacion entre varibles.
 
+```{r}
+# saco las variables que no necesito
+d.cor <- d %>%
+  select(!c(DomainNegativeAffect,
+            DomainDetachment,
+            DomainAntagonism,
+            DomainDisinhibition,
+            DomainPsychoticism,
+            PC,
+            ConfMean,
+            ConfSD,
+            ReacTimeMean_DiscTask,
+            ReacTimeSD_DiscTask,
+            ReacTimeMean_ConfTask,
+            ReacTimeSD_ConfTask,
+            mc,
+            gender,
+            Participant,
+            age,
+            Calibracion))
+
+
+library(corrplot)
+
+# ploteo la correlacion
+corrplot(cor(d.cor), type="upper", method = "ellipse", tl.srt=45)
+
+# me fijo cuantas correlaciones mayores a .6 hay
+sum(cor(d.cor) > 0.6)
+
+```
+
 
 A.6) Regresion lineal usando metodos de regularizaciones:
 
