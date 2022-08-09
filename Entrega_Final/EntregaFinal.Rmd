@@ -64,30 +64,6 @@ A.2) Explorar Calibracion mediante un histograma de la variable.
 hist(d$Calibracion)
 ```
 
-A.3) Corre una regresion lineal para predecir calibracion con los dominios de los rasgos disfuncionales de la personalidad. Mira los resultados con summary()
-```{r}
-model <- lm(Calibracion ~ DomainAntagonism + 
-               DomainDetachment +
-               DomainDisinhibition +
-               DomainNegativeAffect + 
-               DomainPsychoticism,
-             data=d)
-summary(model)
-```
-
-A.4) Corre otro modelo lineal pero esta vez controla por edad y genero, metiendolas en el modelo. Observar los resultados con summary(). 
-```{r}
-model2 <- lm(Calibracion ~ DomainAntagonism + 
-               DomainDetachment +
-               DomainDisinhibition +
-               DomainNegativeAffect + 
-               DomainPsychoticism +
-               gender +
-               age,
-             data=d)
-summary(model2)
-```
-
 A.5) Observa si hay altos niveles de correlacion entre varibles.
 
 ```{r}

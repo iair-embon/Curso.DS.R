@@ -45,10 +45,38 @@ A.4.6) Crear dos vectores llamados `lambda.optimo` y `alpha.optimo` correspondie
 
 A.4.7) Correr el modelo de Elastic Net utilizando los parametros optimos guardados en los vectores `lambda.optimo` y `alpha.optimo` guardando el resultado en un objeto llamado `modelo.facetas`. 
 
-A.4.8) Utilizar la funcion de la libreria cv.glmnet(), la cual te permite usar leave one out cross validation, y ver si te elige un lambda optimo si milar al que resulto de la funcion que creaste. Seria necesario darle a esta funcion alpha.optimo como parametro. Luego probar si los coeficentes del modelo correspondientes a ambos lambdas minimos son parecidos.
+A.4.8) Utilizar la funcion de la libreria `cv.glmnet()`, la cual te permite usar leave one out cross validation, y ver si te elige un lambda optimo si milar al que resulto de la funcion que creaste. Seria necesario darle a esta funcion alpha.optimo como parametro. Luego probar si los coeficentes del modelo correspondientes a ambos lambdas minimos son parecidos.
 
 A.4.9) Interpretar los resultados
 
 A.4.10) Graficar la relacion entre los hiperparametros y los valores de RMSE obtenidos segun LOOCV. 
 
 ## Parte 3: Prediccion con dominios
+
+A.5) Armar un vector llamado `columnas_de_dominio` con los nombres de las columnas que contienen las variables de interes para el caso de los dominios.
+
+A.6) Generar un vector llamado `mejor_subconjunto` que contenga las formulas (como strings) de todos los posibles modelos que pueden generarse a partir de los 5 dominios a utilizar como covariadas. Las formulas tienen que ser strings que contenga la variable `gender` como variable de respuesta y los dominions como variables predictoras. 
+La cantidad total de modelos posibles de manera general es $\sum_{k = 1}^n\frac{n!}{k!(n-k)!}$ que para este caso nos da 31 por lo que debemos obtener un vector con longitud 31. 
+
+A.7) Generar dos vectores llamados `formula_dominio_simple` y `formula_dominio_completa` que contenga las formulas con todos los predictores para los modelos univariados y para el modelo completo (multivariado), respectivamente. El vector `formula_dominio_simple` debe contener 5 modelos distintos, uno correspondiente a cada predictor y el vector `formula_dominio_completa` contiene un solo elemento que es el modelo con todas las covariadas agregadas.
+
+A.8) Generar una funcion llamada `bootstrap_logistico` que dada una string denominada `formula_string`, correspondiente a la formula de un modelo de regresion logistica, calcule la media, el percentil 2.5 y el percentil 97.5 de la distribucion bootstrap para los parametros de la regresion logistica utilizando la funcion `quantile` para los percentiles y usando el metodo de Bootstrap no parametrico con 10 mil repeticiones.
+
+A.9) Utilizando los vectores `formula_dominio_simple` y `formula_dominio_completa`, itere por cada una de las formulas y en cada caso utilice la funcion `bootstrap_logistico` para calcular los parametros relevantes de la distribucion bootstrap de los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). El resultado debe ser un dataframe donde cada fila corresponda a un coeficiente, indicado por una columna llamada `coeficiente`, identificado por una columna llamada `tipo_modelo` que indica si el coeficiente proviene de un modelo univariado o multivariado y con tres columnas correspondientes a la media, el percentil 2.5 y el percentil 97.5 correspondiente a cada coeficiente. Guardar el dataframe resultante en una variable llamada `bootstrap_dominio`.
+
+A.10) Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
+
+A.11) Interpretar los resultados
+
+A.12) Encontrar el modelo que tiene un mejor desempeño predictivo en el conjunto de testeo. Para eso utilizar el vector `mejor_subconjunto` para iterar por cada modelo evaluando su desempeño predictivo segun la media de los errores cuadraticos utilizando el procedimiento leave-one-out para elegir. Guardar el error cuadratrico 
+
+A.13) Graficar el desempeño predictivo de cada uno de los modelos.
+
+A.14) Interpretar los resultados
+
+# Parte B: Genero
+
+El objetivo ahora es utilizar las facetas y los dominios para predecir genero (entendido de manera reduccionista como binario: masculino y femenino). Siendo este un problema de clasificacion binario, vamos a utilizar usar una regresion logistica.
+
+B.1) Transformar la variable de genero para que en vez de ser 'Masculino' o 'Femenino' tenga un valor de 1 si es 'Masculino' y 0 si es 'Femenino'
+
