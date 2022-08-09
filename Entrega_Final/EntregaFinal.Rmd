@@ -324,6 +324,19 @@ coef(cvfit, s = "lambda.min")
 
 A.6.4) Interpretar los resultados
 
+A.6.5)
+Grafique la relacion entre las combinaciones de los parametros de alfa y lambda  en la regularizacion 
+
+```{r}
+library(ggridges)
+opt_alpha_lambda.df %>% mutate(alpha = as.factor(alpha)) %>%
+  ggplot(
+    aes(x = RMSE, y = alpha)
+  ) +
+  geom_density_ridges(scale = 3, rel_min_height = 0.01, gradient_lwd = 1.)
+```
+
+
 # Esto fue oara las facetas, ahora vamos a investigar los Dominios
 
 A.7) Armar un vector llamado `columnas_de_dominio` con los nombres de las columnas que contienen las variables de interes para el caso de los dominios.
@@ -447,9 +460,11 @@ A.16) Interpretar los resultados
 > No se observan diferencias en la capacidad predictiva de los distintos modelos sobre el conjunto de testeo segun el metodo de validacion cruzada leave-one-out. Por lo tanto dada la varianza en los resultados no seria prudente elegir el valor que minimiza la media de los errores cuadraticos empiricos considerando que no habria suficiente evidencia para concluir que los dominios de personalidad predicen la calibracion. 
 
 
-Parte B: Ahora vamos a utilizar las facetas y los dominios para predecir genero (entendido de manera reduccionista como binario: masculino y femenino). Para eso, uno de los posibles engfoques adecuados seria usar una regresion logistica. 
+Parte B: Ahora vamos a utilizar las facetas y los dominios para predecir genero (entendido de manera reduccionista como binario: masculino y femenino). Para eso, uno de los posibles enfoques adecuados seria usar una regresion logistica. 
 
-Preproceso la varible genero
+X.)
+Transformar la variable de genero para que en vez de ser 'Masculino' o 'Femenino' tenga un valor de 1 si es 'Masculino' y 0 si es 'Femenino'
+
 ```{r}
 d$gender <- ifelse(d$gender == "Masculino",1,0)
 ```
@@ -619,17 +634,10 @@ B.4) Interpretar los resultados.
 
 # Ahora vamos a hacer lo mismo con los Dominios. Queremos predecir genero.
 
-B.5) Generar un nuevo vector llamado `mejor_subconjunto_genero` de la misma manera que en el ejercicio [IGUAL QUE EN EL EJERCICIO CON LA REGRESION LINEAL] modificando unicamente la variable de respuesta por la variable `gender`. 
+B.5) Tomar el vector llamado `mejor_subconjunto_genero` y modificar la palabra `overconfidence` por la palabra `gender` para generar todos los posibles modelos predictores del genero.
 
 ```{r}
-mejor_subconjunto_genero <- sapply(
-  1:5, function(x) combn(columnas_de_dominio, x, simplify = F) %>% 
-                 lapply(function(y) str_flatten(y, ' + ')) %>% 
-                 unlist()
-       )  %>% unlist() %>%
-  sapply(
-    function(x) paste0('gender ~ ', x) 
-  ) %>% unname()
+mejor_subconjunto_genero <- str_replace(mejor_subconjunto, 'overconfidence', 'gender')
 ```
 
 B.6) Generar dos vectores llamados `formula_simple_genero` y `formula_completa_genero` con la misma logica que en [EL EJERCICIO CON LA LINEAL] utilizando en este caso el vector `mejor_subconjunto_genero`. 
@@ -657,12 +665,7 @@ bootstrap_logistico <- function(formula_string) {
 }
 ```
 
-B.8) Evalue el funcionamiento de `bootstrap_logistico` empleando alguna formula que use como variable de respuesta el genero. 
-
-```{r}
-bootstrap_logistico('gender ~ age')
-```
-B.9) Utilizando los vectores `formula_dominio_simple` y `formula_dominio_completa`, itere por cada una de las formulas y en cada caso utilice la funcion `bootstrap_logistico` para calcular los parametros relevantes de la distribucion bootstrap de los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). El resultado debe ser un dataframe donde cada fila corresponda a un coeficiente, indicado por una columna llamada `coeficiente`, identificado por una columna llamada `tipo_modelo` que indica si el coeficiente proviene de un modelo univariado o multivariado y con tres columnas correspondientes a la media, el percentil 2.5 y el percentil 97.5 correspondiente a cada coeficiente. Guardar el dataframe resultante en una variable llamada `bootstrap_dominio`.
+B.8) Utilizando los vectores `formula_dominio_simple` y `formula_dominio_completa`, itere por cada una de las formulas y en cada caso utilice la funcion `bootstrap_logistico` para calcular los parametros relevantes de la distribucion bootstrap de los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). El resultado debe ser un dataframe donde cada fila corresponda a un coeficiente, indicado por una columna llamada `coeficiente`, identificado por una columna llamada `tipo_modelo` que indica si el coeficiente proviene de un modelo univariado o multivariado y con tres columnas correspondientes a la media, el percentil 2.5 y el percentil 97.5 correspondiente a cada coeficiente. Guardar el dataframe resultante en una variable llamada `bootstrap_dominio`.
 
 ```{r}
 set.seed(1234)
@@ -707,37 +710,8 @@ bootstrap_dominio %>%
 B.11)
 Interpretar los resultados
 
-B.12)
-Evaluar un ajuste polinomial para la regresion logistica generando una grilla de posibles valores para el grado del polinomio que vaya de 1 a 15 (con intervalos de 1) y ajustar el modelo usando la funcion `poly`. Para cada grado posible del polinomio utilizar un procedimiento leave-one-out para calcular el accuracy y elegir asi el grado optimo del polinomio a utilizar.
-
-```{r, warning=FALSE}
-grilla_grado <- expand.grid(indice = 1:nrow(d), grado = 1:15)
-
-spam <- grilla_grado %>% mutate(
-  probabilidad = grilla_grado %>% 
-    pmap(
-      ~ glm(overconfidence ~ poly(DomainDisinhibition, .y), family = binomial(link = 'logit'),
-            data = d[-.x, ]
-            ) %>% 
-        predict(d[.x, ], type = 'response')
-      ) %>% 
-    unlist(),
-  prediccion = ifelse(probabilidad > 0.5, 1, 0),
-  acierto = prediccion == d[indice, 'overconfidence']
-  ) %>% group_by(grado) %>% summarise(accuracy = mean(acierto))
-
-spam %>%
-  ggplot(
-    aes(x = grado, y = accuracy)
-  ) + geom_smooth(span = 0.3) +
-  geom_hline(
-    yintercept = d %>% count(overconfidence) %>% mutate(n = n/sum(n)) %>% pull(n) %>% max(),
-    linetype = 'dashed'
-  )
-```
-
 B.13)
-Utilizando el vector `mejor_subconjunto` emplear el procedimiento leave-one-out para elegir el modelo con mejor capacidad predictiva de todos los posibles.
+Encontrar el modelo que tiene un mejor desempeño predictivo en el conjunto de testeo. Para eso utilizar el vector `mejor_subconjunto_genero` para iterar por cada modelo evaluando su desempeño predictivo segun la media de los errores cuadraticos utilizando el procedimiento leave-one-out para elegir. Guardar el error cuadratrico 
 
 ```{r}
 predicciones_mejor_subconjunto <- pmap(
@@ -747,7 +721,12 @@ predicciones_mejor_subconjunto <- pmap(
     ) %>% predict(d[.x, ], type = 'response')
 ) %>%
   unlist()
+```
 
+B.14)
+Graficar el desempeño predictivo de cada uno de los modelos.
+
+```{r}
 resultado_mejor_subconjunto <- expand.grid(1:nrow(d), mejor_subconjunto) %>%
   mutate(pred = predicciones_mejor_subconjunto,
          respuesta = ifelse(pred > 0.5, 1, 0),
@@ -759,6 +738,7 @@ resultado_mejor_subconjunto <- expand.grid(1:nrow(d), mejor_subconjunto) %>%
   coord_flip() +
   theme(axis.text.y = element_text(size = 5))
 ```
-B.14)
-Representar en una tabla sus estimaciones puntuales con un intervalo de confianza del 95% construido a partir de 10000 muestras bootstrap no parametricas. 
+
+
+
 
