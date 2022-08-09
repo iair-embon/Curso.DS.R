@@ -5,6 +5,12 @@ date: '2022-07-25'
 output: html_document
 ---
 
+A lo largo de este trabajo, se estara trabajando con datos de 224 personas adultas, obtenidas mediante una tarea perceptual visual. En dicha tarea, se les peresentaba dos circulos con muchos puntitos, y el participante debia infomar que circulo presentaba una mayor cantidad de puntitos, el de la izquierda o la derecha. Luego de informar esto ultimo, el participante tambien tenia que informar la confianza que tenia en que su respuesta sobre la cantidad de puntitos fuera correcta. La confianza era informada mediante una escala Likert que iba del 1 al 4, siendo 1 baja confianza y 4 alta confianza. Ver " chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://50jaiio.sadio.org.ar/pdfs/agranda/AGRANDA-11.pdf " para una descripcion completa de la tarea. 
+Por otro lado, a estos 224 participantes se los evaluo con un test llamado Inventario para Trastornos de la Personalidad para el DSM‐5 (PID-5). Este test evalua 25 facetas o rasgos disfuncionales de la personalidad segun la seccion 3 del manual diagnostico y estadistico de los trastornos de mentales en su 5ta edicion. Un estudio reciente, adapto y valido este test para que pudiera ser utilizado en poblacion Argentina (ver: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7451368/). En este ultmo estudio, tambien se realizo un analisis factorial en donde gran parte de las 25 facetas disfuncionales de personalidad se agrupaban en 5 dominios. 
+En el presente trabajo se explorara la confianza en relacion a las facetas y dominos disfuncionales de la personalidad. La confianza tiene muchas medidas, de las cuales se eligio la calibracion (ver https://www.frontiersin.org/articles/10.3389/fnhum.2014.00443/full para mas detalle).
+Por ultimo se explorara si las facetas y dominios que evalua el test se asocian de alguna manera con el genero de los participantes. 
+
+
 ```{r}
 library(tidyverse)
 library(glmnet)
