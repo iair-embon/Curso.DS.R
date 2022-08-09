@@ -282,7 +282,7 @@ modelo.facetas2 <- glmnet(d.regre.regul.facetas.prepro.m, y,
                           alpha = alpha.optimo)
 coef(modelo.facetas2)
 set.seed(1010)
-cvfit <- cv.glmnet(d.regre.regul.facetas.prepro.m,y, type.measure = "mse", nfolds = nrow(d.regre.regul.facetas))
+cvfit <- cv.glmnet(d.regre.regul.facetas.prepro.m,y,  alpha = alpha.optimo, type.measure = "mse", nfolds = nrow(d.regre.regul.facetas))
 cvfit$lambda.min
 coef(cvfit, s = "lambda.min")
 # veo que son parecidos al seleccionado con la funcion que cree
