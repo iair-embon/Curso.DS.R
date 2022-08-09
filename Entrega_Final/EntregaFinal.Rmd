@@ -21,6 +21,7 @@ load("./df_total_filtered.Rda")
 ```
 
 Saco la calibracion para cada participante, ver Fleming y Lau 2014
+
 ```{r}
 df_calibracion <- df_total %>%
   group_by(Participant, confidence_key) %>%

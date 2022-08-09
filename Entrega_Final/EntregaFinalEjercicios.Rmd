@@ -1,0 +1,49 @@
+---
+title: 'Guia de Trabajos Practicos: Entrega Final'
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+[INTRO AL TEMA Y AL DATASET] 
+
+# Parte A: Calibracion
+
+## Parte 1: Exploracion
+
+A.1) Los participantes, por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. Explorar la confianza promedio de cada participante en base al desempeño en la tarea de manera que ambas variables esten en un mismo grafico. 
+
+A.2) Explorar la Calibracion mediante un histograma de la variable.
+
+A.3) Eliminar del dataframe todas las variables que no comprendan algunas de las 25 facetas de personalidad. Sobre el dataframe filtrado graficar la correlacion entre todas las variables, observar si hay altos niveles de correlacion e informar que problemas podria traer esto para ajustar un modelo a los datos.
+
+## Parte 2: Regularizacion
+
+Nuestro objetivo ahora es utilizar las facetas de la personalidad como variables predictoras de la Calibracion que tienen los sujetos. Dadas las correlaciones entre las distintas facetas vamos a utilizar un modelo de regresion lineal con el metodo de Elastic Net como metodo de regularizacion implementado mediante la funcion `glmnet` del paquete `glmnet`. 
+
+Este metodo requiere dos hiper-parametros para ser ajustado: 
+
+- El hiperparametro $\lambda$ donde $\lambda \in R_+$, regula el grado de penalizacion realizado por la regularizacion. 
+- El hiperparametro $\alpha$ donde $\alpha \in [0,1]$, modula el tipo de regularizacion. Un valor de $\alpha = 0$ equivale a realizar una regularizacion de tipo *Ridge*, un valor de $\alpha = 1$ equivale a realizar una regularizacion de tipo *Lasso* y cualquier valor de $\alpha$ donde $0 < \alpha < 1$ resulta en una regularizacion por el metodo de Elastic Net. 
+
+Para elegir estos parametros se utiliza un metodo de validacion cruazada, usualmente 10 fold cross-validation. En este caso por la poca cantidad de datos usaremos el metodo leave-one-out cross-validation (LOOCV).
+
+A.4.1) Crear una funcion llamada `LOOCV.fun.glmnet` que implemente el metodo de LOOCV y calcule el la raiz cuadrada de la media de los errores cuadraticos (RMSE) como medida de error sobre los datos de testeo. Esta funcion tiene que poder permitirnos elegir el valor optimo de $\lambda$. 
+
+A.4.2) Creaa un nuevo dataframe que contenga unicamente las variables predictoras del modelo junto con la variable de respuesta y guardalo con el nombre `d.regre.regul.facetas`.  
+
+A.4.3) Crear una nueva funcion llamada `opt_alpha_lambda` que tome la funcion `LOOCV.fun.glmnet` y la use para optimizar un segundo parametro: $\alpha$ dando como resultado un dataframe con 3 columnas, dos columnas correspondiente al valor de $\alpha$ y $\lambda$ utilizado y una tercera correspondiente al puntaje de RMSE calculado segun LOOCV. 
+
+A.4.4) Correr la funcion `opt_alpha_lambda` y guardar los resultados en un dataframe llamado `opt_alpha_lambda.df`
+
+A.4.5) Calcular el indice que marca la combinacion de valores dentro de `opt_alpha_lambda.df` con el minimo valor de RMSE. 
+
+A.4.6) Crear dos vectores llamados `lambda.optimo` y `alpha.optimo` correspondientes a los valores de $\lambda$ y $\alpha$ respectivamente que tienen con el valor de RMSE mas bajo. 
+
+A.4.7) Correr el modelo de Elastic Net utilizando los parametros optimos guardados en los vectores `lambda.optimo` y `alpha.optimo` guardando el resultado en un objeto llamado `modelo.facetas`. 
+
+A.4.8) 
+
+A.4.9) Interpretar los resultados
+
+A.4.10) Graficar la relacion entre los hiperparametros y los valores de RMSE obtenidos segun LOOCV. 
