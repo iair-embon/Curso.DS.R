@@ -10,64 +10,22 @@ library(tidyverse)
 library(glmnet)
 ```
 
-Cargo los datos
+1) Antes de comenzar debemos cargar los datos con los que vamos a trabajar.
+
 ```{r}
 # voy a la carpeta del proyecto
 root <- rprojroot::is_rstudio_project
 basename(getwd())
 
 # load the function to get the df list
-load("./df_total_filtered.Rda")
-```
-
-Saco la calibracion para cada participante, ver Fleming y Lau 2014
-```{r}
-df_calibracion <- df_total %>%
-  group_by(Participant, confidence_key) %>%
-  summarise(prop_correcta = mean(discrimination_is_correct)) %>%
-  rename(ConfidenceKey = confidence_key)
-  
-df_calibracion.calculada <- df_total %>% 
-  pivot_longer(cols = starts_with("ConfKey")) %>%
-  distinct(Participant, name, .keep_all = TRUE) %>% 
-  select(Participant, name, value) %>% 
-  mutate(ConfidenceKey = as.integer(str_extract(name, "\\d"))) %>%
-  left_join(df_calibracion) %>%
-  drop_na() %>%
-  mutate(ConfidenceKey = (ConfidenceKey+2)/6) %>%
-  group_by(Participant) %>%
-  mutate(Conf.norm = value / sum(value)) %>%
-  mutate( preCalibracion = value*(prop_correcta - ConfidenceKey)**2) %>%
-  summarise(Calibracion  = mean(preCalibracion))
-```
-
-Convierto el data frame por trials en un data frame por participantes
-```{r}
-d <- df_total %>%
-  select(!c(RelyOn,
-            Problems,
-            ConfKey1,
-            ConfKey2,
-            ConfKey3,
-            ConfKey4,
-            discrimination_is_correct,
-            confidence_key,
-            trials,
-            PointDifference,
-            ReacTime_DiscTask,
-            ReacTime_ConfTask)) %>%
-  distinct(Participant,.keep_all = TRUE)
-
-# le agrego la variable calibracion
-d <- d %>%
-  mutate(Calibracion = df_calibracion.calculada$Calibracion)
+load("./d.Rda")
 ```
 
 Parte A: CALIBRACION
 
-A.1) Explorar la confianza promedio de cada participante en base al desempeño en la tarea. Por el procedimiento en escalera deberian tener una precision (proporcion de respuestas correctas) del 0.72. Que ambas variables esten en un mismo grafico.
+A.1) Explorar la confianza promedio de cada participante (llamada ConfMean) en base al desempeño en la tarea (llamada PC). En el experimento se utilizo un procedimiento en escalera, el cual hace posible controlar la proporcion de aciertos promedio de los participantes. Por el procedimiento utilizado deberian tener un desempeño (aca observado como la proporcion de respuestas correctas "PC") del 0.72. Para explorar estas variables seria necesaria graficarlas a ambas en el mismo grafico. En el eje x poner a los participantes. Los limites del eje y necesitarian ir del 0 al 1.
 ```{r}
-d %>%  ## no me estarian saliendo las leyendas, despues reviso
+d %>% 
   select(ConfMean,PC,Participant) %>% 
   # normalizo el promedio de confianza por sujeto para que este en una escala similar a la del desempeno
   mutate(ConfMean = ConfMean/4, nr = row_number()) %>%
@@ -161,8 +119,10 @@ sum(cor(d.cor) > 0.6)
 
 A.6) Regresion lineal usando metodos de regularizaciones:
 
+Corre una regresion lineal para predecir calibracion usando un metodo de regularizacion para predecir facetas. Para eso se utilizara la libraria glmnet. 
 
-Corre una regresion lineal para predecir calibracion usando un metodo de regularizacion para predecir facetas.
+A.6.0)
+Explorar la libreria glmnet.
 
 A.6.1)
 Por otro lado, es importante para estas regularizaciones, elegir un lambda adecuado, el cual se suele elegir mediante algun metodo de cross validation. Usualmente, en los trabajos que revisamos, usan 10 fold corss validation, aunque por la poca cantidad de datos usa leave one out cross validation (LOOCV). Para eso crea tu propia funcion de LOOCV. Usa el root mean squared errors como medida de error. 
