@@ -20,7 +20,7 @@ A.2) Explorar la Calibracion mediante un histograma de la variable.
 
 A.3) Eliminar del dataframe todas las variables que no comprendan algunas de las 25 facetas de personalidad. Sobre el dataframe filtrado graficar la correlacion entre todas las variables, observar si hay altos niveles de correlacion e informar que problemas podria traer esto para ajustar un modelo a los datos.
 
-## Parte 2: Regularizacion de facetas
+## Parte 2: Prediccion con facetas
 
 Nuestro objetivo ahora es utilizar las facetas de la personalidad como variables predictoras de la Calibracion que tienen los sujetos. Dadas las correlaciones entre las distintas facetas vamos a utilizar un modelo de regresion lineal con el metodo de Elastic Net como metodo de regularizacion implementado mediante la funcion `glmnet` del paquete `glmnet`. 
 
@@ -50,3 +50,5 @@ A.4.8)
 A.4.9) Interpretar los resultados
 
 A.4.10) Graficar la relacion entre los hiperparametros y los valores de RMSE obtenidos segun LOOCV. 
+
+## Parte 3: Prediccion con dominios
