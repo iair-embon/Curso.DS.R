@@ -577,6 +577,15 @@ coef(cvfit, s = "lambda.min")
 
 B.4) Interpretar los resultados.
 
+B.4.10) Graficar la relacion entre los hiperparametros y los valores de accuracy obtenidos segun LOOCV. 
+
+```{r}
+opt_alpha_lambda.df %>% mutate(alpha = as.factor(alpha)) %>%
+  ggplot(
+    aes(x = accuracy, y = alpha)
+  ) +
+  geom_density_ridges(scale = 3, rel_min_height = 0.01, gradient_lwd = 1.)
+```
 
 
 # Ahora vamos a hacer lo mismo con los Dominios. Queremos predecir genero.
@@ -633,8 +642,7 @@ bootstrap_dominio <- sapply(
   pivot_wider(names_from = tipo_medicion, values_from = estimacion)
 ```
 
-B.10)
-Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
+B.10) Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
 
 ```{r}
 bootstrap_dominio %>%

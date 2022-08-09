@@ -78,5 +78,44 @@ A.14) Interpretar los resultados
 
 El objetivo ahora es utilizar las facetas y los dominios para predecir genero (entendido de manera reduccionista como binario: masculino y femenino). Siendo este un problema de clasificacion binario, vamos a utilizar usar una regresion logistica.
 
+## Parte 3: Prediccion con facetas
+
 B.1) Transformar la variable de genero para que en vez de ser 'Masculino' o 'Femenino' tenga un valor de 1 si es 'Masculino' y 0 si es 'Femenino'
 
+B.2.1) Adaptar la funcion `LOOCV.fun.glmnet` de la Parte A para que utilice una regresion logsitica en lugar de una regresion lineal usando genero como variable de respuesta y las 25 facetas como predictores. Asi tambien, utilizar el accuracy en lugar del RMSE como medida a maximizar para encontrar el $\lambda$ optimo.
+
+B.2.2) Creaa un nuevo dataframe que contenga unicamente las variables predictoras del modelo junto con la variable de respuesta y guardalo con el nombre `d.regre.regul.facetas`.  
+
+B.2.3) Adaptar la funcion llamada `opt_alpha_lambda` para que optimice el $\alpha$ pero empleando una regresion logistica. 
+
+B.2.4) Correr la funcion `opt_alpha_lambda` y guardar los resultados en un dataframe llamado `opt_alpha_lambda.df`
+
+B.2.5) Calcular el indice que marca la combinacion de valores dentro de `opt_alpha_lambda.df` con el minimo valor de accuracy. 
+
+B.2.6) Crear dos vectores llamados `lambda.optimo` y `alpha.optimo` correspondientes a los valores de $\lambda$ y $\alpha$ respectivamente que tienen con el valor de accuracy mas bajo. 
+
+B.2.7) Correr el modelo de Elastic Net utilizando los parametros optimos guardados en los vectores `lambda.optimo` y `alpha.optimo` guardando el resultado en un objeto llamado `modelo.facetas`. 
+
+B.2.8) Utilizar la funcion de la libreria `cv.glmnet()` y ver si te elige un lambda optimo si milar al que resulto de la funcion que creaste. Seria necesario darle a esta funcion alpha.optimo como parametro. Luego probar si los coeficentes del modelo correspondientes a ambos lambdas minimos son parecidos.
+
+B.2.9) Interpretar los resultados
+
+B.2.10) Graficar la relacion entre los hiperparametros y los valores de accuracy obtenidos segun LOOCV. 
+
+## Parte 4: Prediccion con dominios
+
+B.3) Tomar el vector llamado `mejor_subconjunto_genero` y modificar la palabra `overconfidence` por la palabra `gender` para generar todos los posibles modelos predictores del genero.
+
+B.4) Generar dos vectores llamados `formula_simple_genero` y `formula_completa_genero` con la misma logica que en A.7 utilizando en este caso el vector `mejor_subconjunto_genero`. 
+
+B.5) Modificar la funcion `bootstrap_lineal`, llamandola `bootstrap_logistico`, de manera que haga lo mismo que la funcion original pero empleando un modelo de regresion logistica.
+
+B.6) Utilizando los vectores `formula_dominio_simple` y `formula_dominio_completa`, itere por cada una de las formulas y en cada caso utilice la funcion `bootstrap_logistico` para calcular los parametros relevantes de la distribucion bootstrap de los coeficientes $\beta$ para cada predictor en el caso del modelo simple (con un solo predictor) y en el caso del modelo completo (con todos los predictores). El resultado debe ser un dataframe donde cada fila corresponda a un coeficiente, indicado por una columna llamada `coeficiente`, identificado por una columna llamada `tipo_modelo` que indica si el coeficiente proviene de un modelo univariado o multivariado y con tres columnas correspondientes a la media, el percentil 2.5 y el percentil 97.5 correspondiente a cada coeficiente. Guardar el dataframe resultante en una variable llamada `bootstrap_dominio`.
+
+B.7) Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
+
+B.8) Interpretar los resultados
+
+B.9) Encontrar el modelo que tiene un mejor desempeño predictivo en el conjunto de testeo. Para eso utilizar el vector `mejor_subconjunto_genero` para iterar por cada modelo evaluando su desempeño predictivo segun la media de los errores cuadraticos utilizando el procedimiento leave-one-out para elegir. Guardar el error cuadratrico 
+
+B.10) Graficar el desempeño predictivo de cada uno de los modelos.
