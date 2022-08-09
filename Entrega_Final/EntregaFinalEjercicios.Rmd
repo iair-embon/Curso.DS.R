@@ -45,7 +45,7 @@ A.4.6) Crear dos vectores llamados `lambda.optimo` y `alpha.optimo` correspondie
 
 A.4.7) Correr el modelo de Elastic Net utilizando los parametros optimos guardados en los vectores `lambda.optimo` y `alpha.optimo` guardando el resultado en un objeto llamado `modelo.facetas`. 
 
-A.4.8) 
+A.4.8) Utilizar la funcion de la libreria cv.glmnet(), la cual te permite usar leave one out cross validation, y ver si te elige un lambda optimo si milar al que resulto de la funcion que creaste. Seria necesario darle a esta funcion alpha.optimo como parametro. Luego probar si los coeficentes del modelo correspondientes a ambos lambdas minimos son parecidos.
 
 A.4.9) Interpretar los resultados
 

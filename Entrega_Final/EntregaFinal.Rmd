@@ -277,16 +277,21 @@ d.regre.regul.facetas.prepro.m <- d.regre.regul.facetas.prepro %>% data.matrix()
 modelo.facetas <- glmnet(d.regre.regul.facetas.prepro.m, y,
                           alpha = alpha.optimo, lambda = lambda.optimo)
 
-# me fijo el lambda optimo que me elije el modelo por si solo usando funciones de la libreria, para alpha = alpha.optimo
-modelo.facetas2 <- glmnet(d.regre.regul.facetas.prepro.m, y,
-                          alpha = alpha.optimo)
-coef(modelo.facetas2)
+```
+
+Nuevo A.4.8) 
+```{r}
+### me fijo el lambda optimo que me elije el modelo por si solo usando funciones de la libreria, para alpha = alpha.optimo
+
+# hago leave one out cross validation con la funcion de la libreria para elegir el lambda minimo 
 set.seed(1010)
 cvfit <- cv.glmnet(d.regre.regul.facetas.prepro.m,y,  alpha = alpha.optimo, type.measure = "mse", nfolds = nrow(d.regre.regul.facetas))
+# veo cual es el lambda minimo y luego veo los coeficientes que se corresponden con ese lambda minimo
 cvfit$lambda.min
 coef(cvfit, s = "lambda.min")
-# veo que son parecidos al seleccionado con la funcion que cree
+# veo que tanto el labda minimo optimo y los coeficientes que se corresponden con ese lambda son parecidos a los resultantes de las funciones que creamos
 ```
+
 
 A.6.4) Interpretar los resultados
 
