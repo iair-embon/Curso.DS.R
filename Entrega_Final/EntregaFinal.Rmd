@@ -64,30 +64,6 @@ A.2) Explorar Calibracion mediante un histograma de la variable.
 hist(d$Calibracion)
 ```
 
-A.3) Corre una regresion lineal para predecir calibracion con los dominios de los rasgos disfuncionales de la personalidad. Mira los resultados con summary()
-```{r}
-model <- lm(Calibracion ~ DomainAntagonism + 
-               DomainDetachment +
-               DomainDisinhibition +
-               DomainNegativeAffect + 
-               DomainPsychoticism,
-             data=d)
-summary(model)
-```
-
-A.4) Corre otro modelo lineal pero esta vez controla por edad y genero, metiendolas en el modelo. Observar los resultados con summary(). 
-```{r}
-model2 <- lm(Calibracion ~ DomainAntagonism + 
-               DomainDetachment +
-               DomainDisinhibition +
-               DomainNegativeAffect + 
-               DomainPsychoticism +
-               gender +
-               age,
-             data=d)
-summary(model2)
-```
-
 A.5) Observa si hay altos niveles de correlacion entre varibles.
 
 ```{r}
@@ -602,8 +578,21 @@ coef(cvfit, s = "lambda.min")
 
 B.4) Interpretar los resultados.
 
+<<<<<<< HEAD
 > Tanto los lambdas minimos como los coeficientes del modelo que se corresponde con cada uno de esos lambdas minimos son parecidos (aunque no tanto como en la parte A). 
 Los resultados no parecieran indicar que algunos de los predictores podrian ser relevantes para predecir genero. Siguen apareciendo los coefficientes porque el apha optimo es 0, y con glmnet, un alpha de 0 es una ridge regression. Esta regresion, a diferencia de la usada en la parte A, no te hace 0 los coeficientes, pueden estar cerca de 0 (de hecho todos son cercanos al 0), pero nunca 0. Por lo que podemos concluir, que no pareciera que los predictores sean relevantes, todos los coeficientes son muy cercanos a 0.
+=======
+B.4.10) Graficar la relacion entre los hiperparametros y los valores de accuracy obtenidos segun LOOCV. 
+
+```{r}
+opt_alpha_lambda.df %>% mutate(alpha = as.factor(alpha)) %>%
+  ggplot(
+    aes(x = accuracy, y = alpha)
+  ) +
+  geom_density_ridges(scale = 3, rel_min_height = 0.01, gradient_lwd = 1.)
+```
+
+>>>>>>> 216f8e4cc4c8b33a980cc2b1568ab08d704770a1
 
 # Ahora vamos a hacer lo mismo con los Dominios. Queremos predecir genero.
 
@@ -659,8 +648,7 @@ bootstrap_dominio <- sapply(
   pivot_wider(names_from = tipo_medicion, values_from = estimacion)
 ```
 
-B.10)
-Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
+B.10) Graficar los valores de los coeficientes con sus respectivos intervalos para cada predictor indicando con un color si la estimacion proviene de los modelos simples o del modelo completo e indicando con una linea punteada el valor de 0 en el grafico. 
 
 ```{r}
 bootstrap_dominio %>%
